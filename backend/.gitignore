@@ -1,0 +1,10 @@
+# .gitignore
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+chromadb_data/
+*.egg-info/
+dist/
+build/
