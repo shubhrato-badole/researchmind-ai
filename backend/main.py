@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.postgres import create_tables
+from database.chromadb import get_collection
 
 
 app = FastAPI(title="ResearchMind AI")
@@ -18,7 +19,8 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     create_tables()
-    
+    print("ChromaDB ready")
+
 @app.get("/")
 def health_check():
     return {"status": "ResearchMind is running"}
