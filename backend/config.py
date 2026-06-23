@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
-import os #os is a built-in Python library used to interact with the operating system.
-
+import os 
 
 load_dotenv()
 
