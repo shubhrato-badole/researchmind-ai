@@ -41,3 +41,42 @@ def upload_youtube(
     user_id = get_current_user(request, response)
     return ingest_youtube(data.url, user_id)
 
+@router.post("/image")
+async def upload_image(
+    file: UploadFile = File(...),
+    request: Request = None,
+    response: Response = None
+):
+    user_id = get_current_user(request, response)
+    file_bytes = await file.read()
+    return ingest_image(file_bytes, file.filename, user_id)
+
+@router.post("/word")
+async def upload_word(
+    file: UploadFile = File(...),
+    request: Request = None,
+    response: Response = None
+):
+    user_id = get_current_user(request, response)
+    file_bytes = await file.read()
+    return ingest_word(file_bytes, file.filename, user_id)
+
+@router.post("/text")
+async def upload_text(
+    file: UploadFile = File(...),
+    request: Request = None,
+    response: Response = None
+):
+    user_id = get_current_user(request, response)
+    file_bytes = await file.read()
+    return ingest_text(file_bytes, file.filename, user_id)
+
+@router.post("/csv")
+async def upload_csv(
+    file: UploadFile = File(...),
+    request: Request = None,
+    response: Response = None
+):
+    user_id = get_current_user(request, response)
+    file_bytes = await file.read()
+    return ingest_csv(file_bytes, file.filename, user_id)
