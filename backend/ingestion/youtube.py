@@ -1,5 +1,5 @@
 from langchain_community.document_loaders import YoutubeLoader
-from utils import process_and_store
+from ingestion.utils import process_and_store
 
 
 def ingest_youtube(url:str , user_id:int):
