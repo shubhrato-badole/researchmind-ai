@@ -1,0 +1,30 @@
+from fastapi import APIRouter, Request, Response
+from pydantic import BaseModel
+from auth.jwt import get_current_user
+from retrieval.hybrid_search import hybrid_search
+from retrieval.reranker import rerank
+
+router = APIRouter(prefix="/search", tags=["search"])
+
+class SearchRequest(BaseModel):
+    query: str
+
+@router.post("/")
+def search(
+    data: SearchRequest,
+    request: Request,
+    response: Response
+):
+    user_id = get_current_user(request, response)
+
+    chunks = hybrid_search(data.query, user_id)
+
+    if not chunks:
+        return {"results": [], "message": "No results found"}
+
+    results = rerank(data.query, chunks)
+
+    return {
+        "query": data.query,
+        "results": results
+    }
