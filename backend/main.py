@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.postgres import create_tables
 from database.chromadb import get_collection
+from auth.routes import router as auth_router
+from ingestion.routes import router as ingestion_router
+
 
 
 app = FastAPI(title="ResearchMind AI")
@@ -15,6 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
+app.include_router(ingestion_router)
 
 @app.on_event("startup")
 def startup():
