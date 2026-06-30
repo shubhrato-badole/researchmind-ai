@@ -17,7 +17,13 @@ def get_tools(user_id: int):
                 if results:
                     for r in results:
                         r["trust_score"] = get_trust_score(r.get("metadata", {}))
+                   
+                    contradiction = None
+                    if len(results) >= 2:
+                      from features.contradiction import detect_contradictions
+                      contradiction = detect_contradictions(query, results)
 
+                 
                     response = ""
                     for r in results:
                         source = r["metadata"].get("filename", "unknown")
@@ -25,6 +31,10 @@ def get_tools(user_id: int):
                         trust = r["trust_score"]
                         response += f"\n[{source_type}: {source} | trust: {trust}/100]\n{r['content']}\n"
                     return response
+                
+                if contradiction:
+                    response += f"\n\n⚠ NOTE: Potential contradiction found — {contradiction['message']}"
+
             except Exception:
                 continue
 
