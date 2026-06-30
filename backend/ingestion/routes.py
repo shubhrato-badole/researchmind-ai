@@ -9,8 +9,10 @@ from ingestion.document import ingest_word, ingest_text
 from ingestion.csv import ingest_csv
 from ingestion.pptx import ingest_pptx
 from ingestion.markdown import ingest_markdown
+from fastapi import Depends
 
-router = APIRouter(prefix="/ingest", tags=["ingestion"])
+router = APIRouter(prefix="/ingest", tags=["ingestion"],
+                   dependencies=[Depends(get_current_user)])
 
 
 MAX_FILE_SIZE = 20 * 1024 * 1024
