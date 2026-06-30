@@ -4,19 +4,28 @@ from auth.jwt import create_refresh_token , create_access_token
 from database.postgres import get_connection
 import bcrypt
 
+
 router = APIRouter(prefix="/auth" , tags=["auth"]) 
 
 class SignupRequest(BaseModel):
     name: str
     email:str
     password:str
+    captcha_token: str
 
 class LoginResuest(BaseModel):
     email: str
     pasword:str
+    captcha_token: str
 
 @router.post("/signup")
 def signup(data:SignupRequest, response: Response):
+
+    is_human = await verify_captcha(data.captcha_token)
+
+    if not is_human:
+        raise HTTPException(status_code=400, detail="Captcha verification failed")
+    
     connection = get_connection()
     cur = connection.cursor()
      
