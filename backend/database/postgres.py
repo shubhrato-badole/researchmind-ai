@@ -61,6 +61,55 @@ def create_tables():
         )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS document_topics (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+        topic VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS quiz_scores (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        topic VARCHAR(255),
+        score INTEGER,
+        total INTEGER,
+        difficulty VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+    
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS roadmaps (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        goal VARCHAR(500),
+        current_step INTEGER DEFAULT 0,
+        streak INTEGER DEFAULT 0,
+        last_active DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS roadmap_steps (
+        id SERIAL PRIMARY KEY,
+        roadmap_id INTEGER REFERENCES roadmaps(id) ON DELETE CASCADE,
+        step_number INTEGER,
+        title VARCHAR(255),
+        description TEXT,
+        status VARCHAR(20) DEFAULT 'upcoming',
+        estimated_days INTEGER,
+        resources_ingested BOOLEAN DEFAULT FALSE,
+        quiz_passed BOOLEAN DEFAULT FALSE,
+        completed_at TIMESTAMP
+    )
+""")
+
     conn.commit()
     cur.close()
     conn.close()
