@@ -61,7 +61,7 @@ def get_current_user(request: Request, response: Response):
     if not session:
         raise HTTPException(status_code=401, detail="Session not found, please login again")
 
-    # step 4 — generate new access token and set in cookie
+   
     new_access_token = create_access_token(user_id)
     response.set_cookie(
         key="access_token",
