@@ -1,6 +1,52 @@
 from database.postgres import get_connection
 
 
+
+
+
+def create_session(user_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO chat_sessions (user_id) VALUES (%s) RETURNING id",
+        (user_id,)
+    )
+    session_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return session_id
+
+def update_session_title(session_id: int, title: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE chat_sessions SET title = %s WHERE id = %s",
+        (title[:50], session_id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def get_sessions(user_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """SELECT id, title, created_at FROM chat_sessions
+           WHERE user_id = %s
+           ORDER BY created_at DESC
+           LIMIT 20""",
+        (user_id,)
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [
+        {"id": r[0], "title": r[1], "created_at": str(r[2])}
+        for r in rows
+    ]
+
+
 def get_chat_history(user_id:int , limit:10):
     conn= get_connection()
     cur = conn.curser()
