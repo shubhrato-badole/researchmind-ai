@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-import os 
+import os
 
 load_dotenv()
 
@@ -7,10 +7,13 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 JWT_SECRET = os.getenv("JWT_SECRET")
 LLM_MODE = os.getenv("LLM_MODE", "gemini")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 CHROMA_HOST = "localhost"
 CHROMA_PORT = 8000
-
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
