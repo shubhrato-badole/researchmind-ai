@@ -1,4 +1,4 @@
-from langchain.schema import Document
+from langchain_core.documents import Document
 from ingestion.utils import process_and_store
 from pptx import Presentation
 import tempfile

@@ -4,8 +4,7 @@ from fastapi.responses import RedirectResponse
 from auth.jwt import create_refresh_token , create_access_token , verify_token , get_current_user
 from database.postgres import get_connection
 import bcrypt
-from captcha import verify_captcha
-from google_oauth import oauth, get_or_create_google_user
+from auth.goggle_auth import oauth, get_or_create_google_user
 from auth.captcha import verify_captcha
 from auth.otp_utils import generate_otp, save_otp, verify_otp, send_otp_email
 from config import FRONTEND_URL

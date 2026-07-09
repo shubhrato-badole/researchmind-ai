@@ -1,4 +1,4 @@
-from langchain.schema import Document
+from langchain_core.documents import Document
 from ingestion.utils import process_and_store
 
 def ingest_markdown(file_bytes: bytes, filename: str, user_id: int):

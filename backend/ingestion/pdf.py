@@ -1,6 +1,6 @@
 from langchain_community.document_loaders import PyPDFLoader
 from ingestion.utils import process_and_store
-import tempfile # this isused ot create temprorpy file in the system that get deletd after creacting an document of that 
+import tempfile 
 import os
 
 
