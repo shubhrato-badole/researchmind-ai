@@ -1,4 +1,5 @@
-from langgraph.prebuilt import create_react_agent
+from langgraph.graph import StateGraph, MessagesState, END
+from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -19,17 +20,55 @@ llm = ChatGoogleGenerativeAI(
 )
 
 
-
 checkpointer = MemorySaver()
 
 
-agent = create_react_agent(
-    llm,
-    tools=[], 
-    checkpointer=checkpointer,
-    interrupt_before=["search_internet"]
-)
+def route_tools(state):
+    """Decide which tool node to go to based on the tool the LLM chose."""
+    last_message = state["messages"][-1]
+    tool_calls = getattr(last_message, "tool_calls", None)
+    if not tool_calls:
+        return END
 
+    tool_name = tool_calls[0]["name"]
+    if tool_name == "search_internet":
+        return "search_internet"
+    return "search_documents"
+
+
+def build_agent(tools):
+    """Build a graph where search_documents auto-executes but
+    search_internet pauses for human approval before running."""
+
+    doc_tool = tools[0]
+    web_tool = tools[1] if len(tools) > 1 else None
+
+    bound_llm = llm.bind_tools(tools)
+
+    def call_model(state):
+        return {"messages": [bound_llm.invoke(state["messages"])]}
+
+    workflow = StateGraph(MessagesState)
+    workflow.add_node("agent", call_model)
+    workflow.add_node("search_documents", ToolNode([doc_tool]))
+
+    if web_tool:
+        workflow.add_node("search_internet", ToolNode([web_tool]))
+
+    workflow.set_entry_point("agent")
+
+    routes = {"search_documents": "search_documents", END: END}
+    if web_tool:
+        routes["search_internet"] = "search_internet"
+
+    workflow.add_conditional_edges("agent", route_tools, routes)
+    workflow.add_edge("search_documents", "agent")
+    if web_tool:
+        workflow.add_edge("search_internet", "agent")
+
+    interrupt = ["search_internet"] if web_tool else []
+
+    return workflow.compile(checkpointer=checkpointer, interrupt_before=interrupt)
 
 
 def compress_history(history: list, max_tokens: int = 3000):
@@ -47,6 +86,7 @@ def compress_history(history: list, max_tokens: int = 3000):
 
     return compressed
 
+
 def build_system_prompt(long_term: list):
     prompt = """You are ResearchMind, a helpful AI assistant.
 
@@ -56,7 +96,6 @@ Always search documents first before searching the web.
 If you see a ⚠ NOTE about a contradiction in the context — 
 always mention it in your answer clearly like:
 "⚠ Contradiction found: [source A] says X but [source B] says Y"
-
 Even without a note — if you notice two sources disagreeing on a fact,
 flag it the same way.
 
@@ -73,52 +112,37 @@ Be concise and helpful."""
 
     return prompt
 
+
+def _build_messages(compressed, query, system_prompt):
+    messages = [SystemMessage(content=system_prompt)]
+    for msg in compressed:
+        if msg["role"] == "user":
+            messages.append(HumanMessage(content=msg["message"]))
+        else:
+            messages.append({"role": msg["role"], "content": msg["message"]})
+    messages.append(HumanMessage(content=query))
+    return messages
+
+
 def run_agent(query: str, user_id: int, search_web: bool = False):
     tools = get_tools(user_id)
 
-   
-  
     if not search_web:
         tools = [tools[0]]
 
-    
     history = get_chat_history(user_id)
     long_term = get_long_term_memory(user_id)
-
-   
     compressed = compress_history(history)
 
-   
-    messages = []
-    for msg in compressed:
-        messages.append({
-            "role": msg["role"],
-            "content": msg["message"]
-        })
-
-    messages.append({"role": "user", "content": query})
-
     system_prompt = build_system_prompt(long_term)
+    messages = _build_messages(compressed, query, system_prompt)
 
-   
-    current_agent = create_react_agent(
-        llm,
-        tools,
-        checkpointer=checkpointer,
-        interrupt_before=["search_internet"] if len(tools) > 1 else []
-    )
+    current_agent = build_agent(tools)
 
     config = {"configurable": {"thread_id": str(user_id)}}
 
-    result = current_agent.invoke(
-        {
-            "messages": messages,
-            "system": system_prompt
-        },
-        config=config
-    )
+    result = current_agent.invoke({"messages": messages}, config=config)
 
-    
     state = current_agent.get_state(config)
     if state.next and "search_internet" in str(state.next):
         return {
@@ -129,7 +153,6 @@ def run_agent(query: str, user_id: int, search_web: bool = False):
 
     final_answer = result["messages"][-1].content
 
-   
     save_message(user_id, "user", query)
     save_message(user_id, "assistant", final_answer)
 
@@ -138,23 +161,18 @@ def run_agent(query: str, user_id: int, search_web: bool = False):
         "answer": final_answer
     }
 
+
 def resume_agent(user_id: int, approved: bool):
     """resume after human approval"""
     config = {"configurable": {"thread_id": str(user_id)}}
 
     tools = get_tools(user_id)
-
-    current_agent = create_react_agent(
-        llm,
-        tools,
-        checkpointer=checkpointer
-    )
+    current_agent = build_agent(tools)
 
     if approved:
         result = current_agent.invoke(None, config=config)
         answer = result["messages"][-1].content
     else:
-       
         state = current_agent.get_state(config)
         answer = state.values["messages"][-1].content
 
@@ -165,10 +183,10 @@ def resume_agent(user_id: int, approved: bool):
         "answer": answer
     }
 
+
 def stream_agent(query: str, user_id: int, search_web: bool = False):
     """stream answer token by token"""
     tools = get_tools(user_id)
-
 
     if not search_web:
         tools = [tools[0]]
@@ -177,31 +195,17 @@ def stream_agent(query: str, user_id: int, search_web: bool = False):
     long_term = get_long_term_memory(user_id)
     compressed = compress_history(history)
 
-    messages = []
-    for msg in compressed:
-        messages.append({
-            "role": msg["role"],
-            "content": msg["message"]
-        })
-    messages.append({"role": "user", "content": query})
-
     system_prompt = build_system_prompt(long_term)
+    messages = _build_messages(compressed, query, system_prompt)
 
-    current_agent = create_react_agent(
-        llm,
-        tools,
-        checkpointer=checkpointer
-    )
+    current_agent = build_agent(tools)
 
     config = {"configurable": {"thread_id": str(user_id)}}
 
     full_answer = ""
 
     for chunk in current_agent.stream(
-        {
-            "messages": messages,
-            "system": system_prompt
-        },
+        {"messages": messages},
         config=config,
         stream_mode="messages"
     ):
@@ -214,7 +218,6 @@ def stream_agent(query: str, user_id: int, search_web: bool = False):
             ):
                 full_answer += msg.content
                 yield msg.content
-
 
     save_message(user_id, "user", query)
     save_message(user_id, "assistant", full_answer)
