@@ -1,47 +1,65 @@
-import { useRef, useState } from 'react'
-import { Plus } from 'lucide-react'
-import client from '../Api/client'
+import { useRef } from 'react'
+import { Plus, X, FileText, Image } from 'lucide-react'
 
-export default function AddContentMenu({ onAdded }: { onAdded?: () => void }) {
+interface PendingFile {
+  file: File
+  preview: string
+  type: string
+}
+
+export default function AddContentMenu({
+  pendingFile,
+  onFileSelected,
+  onRemove
+}: {
+  pendingFile: PendingFile | null
+  onFileSelected: (file: PendingFile) => void
+  onRemove: () => void
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      await client.post('/ingest/file', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      onAdded?.()
-    } finally {
-      setUploading(false)
-      e.target.value = ''
-    }
+    const type = file.type.startsWith('image') ? 'image' : 'document'
+    const preview = file.name
+
+    onFileSelected({ file, preview, type })
+    e.target.value = ''
   }
 
   return (
-    <div className="relative">
+    <>
       <input
         ref={fileInputRef}
         type="file"
-       accept=".pdf,.docx,.txt,.csv,.png,.jpg,.jpeg,.pptx,.md"
+        accept=".pdf,.docx,.txt,.csv,.png,.jpg,.jpeg,.pptx,.md"
         className="hidden"
         onChange={handleFileChange}
       />
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        disabled={uploading}
-        className="w-8 h-8 rounded-full border border-[#3a3a3c] flex items-center justify-center text-[#888] hover:text-white transition-colors flex-shrink-0 disabled:opacity-40"
-        aria-label="Add content"
-        title="Upload a PDF or image"
-      >
-        <Plus size={16} />
-      </button>
-    </div>
+
+      {pendingFile ? (
+     
+        <div className="flex items-center gap-1.5 bg-[#1e1b4b] border border-[#534AB7] text-[#7C75D4] rounded-lg px-2.5 py-1.5 text-xs flex-shrink-0">
+          {pendingFile.type === 'image'
+            ? <Image size={12} />
+            : <FileText size={12} />
+          }
+          <span className="max-w-[100px] truncate">{pendingFile.preview}</span>
+          <button onClick={onRemove} className="hover:text-white transition-colors">
+            <X size={12} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="w-8 h-8 rounded-full border border-[#3a3a3c] flex items-center justify-center text-[#666] hover:text-white transition-colors flex-shrink-0"
+          aria-label="Add file"
+        >
+          <Plus size={16} />
+        </button>
+      )}
+    </>
   )
 }
