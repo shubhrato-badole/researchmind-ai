@@ -122,3 +122,6 @@ def create_tables():
     cur.close()
     conn.close()
     print("Tables created successfully")
+
+    if __name__ == "__main__":
+     create_tables()
