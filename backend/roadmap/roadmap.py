@@ -10,7 +10,7 @@ from datetime import date
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
-    google__api_key=GEMINI_API_KEY
+    google_api_key=GEMINI_API_KEY
 )
 
 
@@ -49,10 +49,10 @@ def generate_roadmap(goal:str, user_id:int , current_knowledge:str):
         text=text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
          
-        conn = get_connection
+        conn = get_connection()
         cur = conn.cursor()
 
-        cur.execute("INSERT INTO roadmaps(user_id, goal) VALUES(%s, %s) RETURNING id"
+        cur.execute("INSERT INTO roadmaps(user_id, goal) VALUES(%s, %s) RETURNING id",
                     (user_id, goal))
         roadmap_id = cur.fetchone()[0]
 
@@ -87,7 +87,7 @@ def generate_roadmap(goal:str, user_id:int , current_knowledge:str):
 
 
 def start_step(roadmap_id:int , step_number: int , user_id:int):
-    conn = get_connection
+    conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""SELECT tittle, description FROM roadmap_steps WHERE roadmap_id = %s AND step_number = %s""" , (roadmap_id , step_number))
@@ -166,7 +166,7 @@ def get_progress(roadmap_id: int, user_id: int):
     conn = get_connection()
     cur = conn.cursor()
 
-    # get roadmap
+    
     cur.execute(
         "SELECT goal, current_step, streak, last_active FROM roadmaps WHERE id = %s AND user_id = %s",
         (roadmap_id, user_id)
@@ -178,7 +178,7 @@ def get_progress(roadmap_id: int, user_id: int):
 
     goal, current_step, streak, last_active = roadmap
 
-    # get all steps
+  
     cur.execute(
         """SELECT step_number, title, status, estimated_days, quiz_passed
            FROM roadmap_steps WHERE roadmap_id = %s ORDER BY step_number""",
@@ -186,15 +186,15 @@ def get_progress(roadmap_id: int, user_id: int):
     )
     steps = cur.fetchall()
 
-    # calculate progress
+ 
     total = len(steps)
     completed = sum(1 for s in steps if s[2] == "completed")
     percentage = round((completed / total) * 100) if total > 0 else 0
 
-    # estimate remaining days
+
     remaining_days = sum(s[3] for s in steps if s[2] != "completed")
 
-    # update streak
+
     today = date.today()
     if last_active and (today - last_active).days == 1:
         streak += 1
