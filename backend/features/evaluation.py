@@ -1,4 +1,3 @@
-# features/evaluation.py
 from ragas import evaluate
 from ragas.metrics import (
     faithfulness,
