@@ -15,7 +15,7 @@ from features.study_mode import (
     evaluate_interview_answer
 )
 from features.voice_query import transcribe_voice
-from features.evaluation import evaluate_rag
+# from features.evaluation import evaluate_rag
 from agent.graph import run_agent
 
 router = APIRouter(
@@ -118,19 +118,11 @@ def summary(data: SummaryRequest, request: Request, response: Response):
 class InterviewRequest(BaseModel):
     topic: Optional[str] = None
 
-class EvaluateRequest(BaseModel):
-    question: str
-    answer: str
-    key_points: list
 
 @router.post("/interview/question")
 def interview_question(data: InterviewRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
     return generate_interview_question(user_id, data.topic)
-
-@router.post("/interview/evaluate")
-def interview_evaluate(data: EvaluateRequest):
-    return evaluate_interview_answer(data.question, data.answer, data.key_points)
 
 
 
