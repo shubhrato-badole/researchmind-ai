@@ -1,3 +1,4 @@
+from typing import Optional
 from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
@@ -105,7 +106,12 @@ Always cite your sources clearly:
 - If both → say which part came from where.
 If you get NO_RESULTS from both tools say:
 "I couldn't find enough information. Try uploading more documents on this topic."
-Be concise and helpful."""
+Be concise and helpful.
+If search_documents returns NO_DOCUMENTS:
+- Tell the user that no documents have been uploaded yet.
+- Ask them to upload a PDF, website, YouTube video, or other supported source.
+- Do NOT search the web if the request is specifically about "my documents", "my PDF", "my notes", "my files", or "summarize my document".
+"""
 
     if long_term:
         prompt += f"\n\nWhat I know about this user:\n" + "\n".join(long_term)
@@ -124,13 +130,13 @@ def _build_messages(compressed, query, system_prompt):
     return messages
 
 
-def run_agent(query: str, user_id: int, search_web: bool = False):
+def run_agent(query: str, user_id: int, search_web: bool = False , session_id: Optional[int] = None):
     tools = get_tools(user_id)
 
     if not search_web:
         tools = [tools[0]]
 
-    history = get_chat_history(user_id)
+    history = get_chat_history(user_id , session_id)
     long_term = get_long_term_memory(user_id)
     compressed = compress_history(history)
 
@@ -153,8 +159,8 @@ def run_agent(query: str, user_id: int, search_web: bool = False):
 
     final_answer = result["messages"][-1].content
 
-    save_message(user_id, "user", query)
-    save_message(user_id, "assistant", final_answer)
+    save_message(user_id, "user", query , session_id)
+    save_message(user_id, "assistant", final_answer , session_id)
 
     return {
         "status": "complete",
@@ -176,7 +182,7 @@ def resume_agent(user_id: int, approved: bool):
         state = current_agent.get_state(config)
         answer = state.values["messages"][-1].content
 
-    save_message(user_id, "assistant", answer)
+    save_message(user_id, "assistant", answer   , session_id)
 
     return {
         "status": "complete",
@@ -184,7 +190,7 @@ def resume_agent(user_id: int, approved: bool):
     }
 
 
-def stream_agent(query: str, user_id: int, search_web: bool = False):
+def stream_agent(query: str, user_id: int, search_web: bool = False , session_id: int | None = None):
     """stream answer token by token"""
     tools = get_tools(user_id)
 
@@ -219,5 +225,9 @@ def stream_agent(query: str, user_id: int, search_web: bool = False):
                 full_answer += msg.content
                 yield msg.content
 
-    save_message(user_id, "user", query)
-    save_message(user_id, "assistant", full_answer)
+    save_message(user_id, "user", query ,  session_id)
+    save_message(user_id, "assistant", full_answer , session_id)
+
+
+
+
