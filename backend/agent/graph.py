@@ -168,7 +168,7 @@ def run_agent(query: str, user_id: int, search_web: bool = False , session_id: O
     }
 
 
-def resume_agent(user_id: int, approved: bool):
+def resume_agent(user_id: int, approved: bool , session_id: Optional[int] = None):
     """resume after human approval"""
     config = {"configurable": {"thread_id": str(user_id)}}
 
@@ -227,6 +227,7 @@ def stream_agent(query: str, user_id: int, search_web: bool = False , session_id
 
     save_message(user_id, "user", query ,  session_id)
     save_message(user_id, "assistant", full_answer , session_id)
+
 
 
 
