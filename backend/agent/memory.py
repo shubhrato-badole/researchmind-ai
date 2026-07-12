@@ -1,9 +1,6 @@
 from database.postgres import get_connection
 
 
-
-
-
 def create_session(user_id: int):
     conn = get_connection()
     cur = conn.cursor()
@@ -65,16 +62,16 @@ def get_chat_history(user_id:int , limit:10):
     rows.reverse()
     return [{"role": row[0], "message": row[1]} for row in rows]
 
-def save_message(user_id: int, role: str, message: str):
+def save_message(user_id: int, role: str, message: str , session_id=None ):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("INSERT INTO chat_history (user_id ,  role, message) VALUES(%s, %s ,%s) ", (user_id, role, message))
+    cur.execute("INSERT INTO chat_history (user_id ,  role, message, session_id) VALUES(%s, %s ,%s, %s) ", (user_id, role, message, session_id))
     conn.commit()
     cur.close()
     conn.close()
 
-def get_long_term_memory(user_id: int):
+def get_long_term_memory(user_id: int ,  session_id=None):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
