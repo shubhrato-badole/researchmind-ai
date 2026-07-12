@@ -1,14 +1,37 @@
+print("A")
 from fastapi import APIRouter, UploadFile, File, Request, Response, HTTPException
+
+print("B")
 from pydantic import BaseModel
+
+print("C")
 from auth.jwt import get_current_user
+
+print("D")
 from ingestion.pdf import ingest_pdf
+
+print("E")
 from ingestion.website import ingest_website
+
+print("F")
 from ingestion.youtube import ingest_youtube
+
+print("G")
 from ingestion.ocr import ingest_image
+
+print("H")
 from ingestion.document import ingest_word, ingest_text
+
+print("I")
 from ingestion.csv import ingest_csv
+
+print("J")
 from ingestion.pptx import ingest_pptx
+
+print("K")
 from ingestion.markdown import ingest_markdown
+
+print("L")
 from fastapi import Depends
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"],
