@@ -10,30 +10,31 @@ def get_tools(user_id: int):
         """Search the user's private knowledge base.
         Use this first for any question."""
 
-
         for attempt in range(3):
             try:
                 results = multi_query_search(query, user_id)
                 if results:
                     for r in results:
                         r["trust_score"] = get_trust_score(r.get("metadata", {}))
-                   
+
+                
                     contradiction = None
                     if len(results) >= 2:
-                      from features.contradiction import detect_contradictions
-                      contradiction = detect_contradictions(query, results)
+                        from features.contradiction import detect_contradictions
+                        contradiction = detect_contradictions(query, results)
 
-                 
                     response = ""
                     for r in results:
                         source = r["metadata"].get("filename", "unknown")
                         source_type = r["metadata"].get("source_type", "")
                         trust = r["trust_score"]
                         response += f"\n[{source_type}: {source} | trust: {trust}/100]\n{r['content']}\n"
+
+                   
+                    if contradiction:
+                        response += f"\n\n⚠ NOTE: Potential contradiction — {contradiction['message']}"
+
                     return response
-                
-                if contradiction:
-                    response += f"\n\n⚠ NOTE: Potential contradiction found — {contradiction['message']}"
 
             except Exception:
                 continue
@@ -45,7 +46,6 @@ def get_tools(user_id: int):
         """Search the web for current or missing information.
         Use only if documents don't have the answer."""
 
-      
         for attempt in range(3):
             try:
                 results = search_web(query)
