@@ -277,10 +277,13 @@ async def google_callback(request: Request, response: Response):
             key="refresh_token", value=refresh_token,
             httponly=True, max_age=604800, samesite="lax"
         )
+        print("Redirecting to:", f"{FRONTEND_URL}/chat")
         return redirect
 
+   
     except Exception as e:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=oauth_failed")
+        print(e)
+        raise
     
 
 
