@@ -1,7 +1,6 @@
-// src/pages/Documents.tsx
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Plus, FileText, Globe,  Image, FileSpreadsheet, Presentation, File } from 'lucide-react'
+import { Trash2, Plus, FileText, Globe, Image, FileSpreadsheet, Presentation, File } from 'lucide-react'
 import Layout from '../Components/Layout'
 import client from '../Api/client'
 import Spinner from '../Components/ui/Spinner'
@@ -49,12 +48,16 @@ export default function Documents() {
   const [uploading, setUploading] = useState(false)
   const [urlError, setUrlError] = useState('')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['documents'],
     queryFn: async () => {
       const res = await client.get('/documents/')
       return res.data.documents as Document[]
-    }
+    },
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
   })
 
   const deleteMutation = useMutation({
@@ -63,7 +66,7 @@ export default function Documents() {
       await queryClient.cancelQueries({ queryKey: ['documents'] })
       const previous = queryClient.getQueryData<Document[]>(['documents'])
       queryClient.setQueryData<Document[]>(['documents'], (old: Document[] | undefined) =>
-        (old ?? [] ).filter(d => d.id !== id)
+        (old ?? []).filter(d => d.id !== id)
       )
       return { previous }
     },
@@ -127,7 +130,6 @@ export default function Documents() {
     <Layout>
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        
         <div className="px-5 py-3 border-b border-[#3a3a3c] flex items-center justify-between bg-[#2d2d2f] flex-shrink-0">
           <div>
             <h1 className="text-sm font-semibold text-white">My documents</h1>
@@ -160,11 +162,24 @@ export default function Documents() {
           </div>
         </div>
 
-      
         <div className="flex-1 overflow-y-auto p-5 bg-[#2d2d2f]">
           {isLoading ? (
             <div className="flex justify-center py-20">
               <Spinner />
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+              <div className="w-14 h-14 bg-[#3a1c1c] rounded-2xl flex items-center justify-center text-3xl">⚠️</div>
+              <h2 className="text-sm font-semibold text-white">0 documents uploaded</h2>
+              <p className="text-xs text-[#666] max-w-xs">
+                {(error as any)?.response?.data?.detail || 'Something went wrong. Check your connection and try again.'}
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="text-xs px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] transition-colors"
+              >
+                {isFetching ? 'Retrying...' : 'Try again'}
+              </button>
             </div>
           ) : data?.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
@@ -194,7 +209,7 @@ export default function Documents() {
                         {doc.source_url && (
                           <>
                             <span className="text-xs text-[#444]">·</span>
-                            <a
+                            <a 
                               href={doc.source_url}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -220,7 +235,6 @@ export default function Documents() {
         </div>
       </div>
 
-      
       <Modal
         open={urlModal}
         onClose={() => { setUrlModal(false); setUrl(''); setUrlError('') }}
