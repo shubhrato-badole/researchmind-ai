@@ -23,19 +23,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
-//   useEffect(() => {
-//     const getUser = async () => {
-//       try {
-//         const res = await client.get('/auth/me')
-//         setUser(res.data.user)
-//       } catch {
-//         setUser(null)
-//       } finally {
-//         setLoading(false)
-//       }
-//     }
-//     getUser()
-//   }, [])
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const res = await client.get('/auth/me')
+        setUser(res.data.user)
+      } catch {
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    getUser()
+  }, [])
 
   const login = async (email: string, password: string, captchaToken: string) => {
     const res = await client.post("auth/login",{ email, password, captcha_token: captchaToken })
