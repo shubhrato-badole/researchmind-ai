@@ -13,7 +13,7 @@ def ingest_pptx(file_bytes: bytes, filename: str, user_id: int):
         prs = Presentation(tmp_path)
         os.unlink(tmp_path)
 
-        # extract text from all slides
+       
         full_text = ""
         for i, slide in enumerate(prs.slides):
             slide_text = f"\nSlide {i+1}:\n"
