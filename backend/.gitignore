@@ -8,3 +8,4 @@ chromadb_data/
 *.egg-info/
 dist/
 build/
+.venv/
