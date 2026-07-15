@@ -2,13 +2,14 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from retrieval.hybrid_search import hybrid_search
 from retrieval.reranker import rerank
 from config import GEMINI_API_KEY
+from functools import lru_cache
 
-
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    google_api_key=GEMINI_API_KEY
-)
-
+@lru_cache(maxsize=1)
+def get_llm():
+    return ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        google_api_key=GEMINI_API_KEY
+    )
 
 def generate_queries(query: str):
     prompt = f"""Generate 3 different versions of this question to improve document search.
@@ -18,7 +19,7 @@ Return only the 3 questions, one per line, no numbering, no extra text.
 Question: {query}"""
 
     try:
-        response = llm.invoke(prompt)
+        response = get_llm().invoke(prompt)
         lines = response.content.strip().split("\n")
         queries = [line.strip() for line in lines if line.strip()]
         return queries[:3]
@@ -36,7 +37,6 @@ def multi_query_search(query: str, user_id: int):
             results = hybrid_search(q, user_id)
             for chunk in results:
                 key = chunk["content"]
-                # deduplicate — same chunk found by multiple queries
                 if key not in all_chunks:
                     all_chunks[key] = chunk
         except:

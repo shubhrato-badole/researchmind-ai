@@ -6,11 +6,10 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import os
 
-OTP_EXPIRY_SECONDS = 600  # 10 minutes
+OTP_EXPIRY_SECONDS = 600  
 
-redis_client = redis.Redis(
-    host=os.getenv("REDIS_HOST", "localhost"),
-    port=int(os.getenv("REDIS_PORT", "6379")),
+redis_client = redis.from_url(
+    os.getenv("REDIS_URL", "redis://localhost:6379"),
     decode_responses=True
 )
 
@@ -18,7 +17,6 @@ def generate_otp() -> str:
     return str(random.randint(100000, 999999))
 
 def save_otp(user_id: int, otp: str):
-
     redis_client.setex(f"otp:{user_id}", OTP_EXPIRY_SECONDS, otp)
 
 def verify_otp(user_id: int, otp: str) -> bool:

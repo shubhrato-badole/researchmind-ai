@@ -1,1 +1,27 @@
+# Python
 .venv/
+venv/
+backend/venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Environment
+.env
+.env.*
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+
+# Chroma
+chroma_db/
+
+# Uploads
+uploads/

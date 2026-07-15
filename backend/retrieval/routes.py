@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel
 from auth.jwt import get_current_user
-from retrieval.hybrid_search import hybrid_search
-from retrieval.reranker import rerank
 from fastapi import Depends
 
 router = APIRouter(prefix="/search",
@@ -18,6 +16,8 @@ def search(
     request: Request,
     response: Response
 ):
+    from retrieval.hybrid_search import hybrid_search
+    from retrieval.reranker import rerank
     user_id = get_current_user(request, response)
 
     chunks = hybrid_search(data.query, user_id)

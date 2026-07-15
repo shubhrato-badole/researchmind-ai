@@ -1,38 +1,9 @@
-print("A")
+
 from fastapi import APIRouter, UploadFile, File, Request, Response, HTTPException
-
-print("B")
 from pydantic import BaseModel
-
-print("C")
 from auth.jwt import get_current_user
-
-print("D")
-from ingestion.pdf import ingest_pdf
-
-print("E")
-from ingestion.website import ingest_website
-
-print("F")
-from ingestion.youtube import ingest_youtube
-
-print("G")
-from ingestion.ocr import ingest_image
-
-print("H")
-from ingestion.document import ingest_word, ingest_text
-
-print("I")
-from ingestion.csv import ingest_csv
-
-print("J")
-from ingestion.pptx import ingest_pptx
-
-print("K")
-from ingestion.markdown import ingest_markdown
-
-print("L")
 from fastapi import Depends
+
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"],
                    dependencies=[Depends(get_current_user)])
@@ -76,26 +47,35 @@ async def upload_file(
         )
 
     if ext == "pdf":
+        from ingestion.pdf import ingest_pdf
         return ingest_pdf(file_bytes, file.filename, user_id)
     elif ext == "docx":
+        from ingestion.document import ingest_word
         return ingest_word(file_bytes, file.filename, user_id)
     elif ext == "txt":
+        from ingestion.document import  ingest_text
         return ingest_text(file_bytes, file.filename, user_id)
     elif ext == "csv":
+        from ingestion.csv import ingest_csv
         return ingest_csv(file_bytes, file.filename, user_id)
     elif ext in ["png", "jpg", "jpeg"]:
+        from ingestion.ocr import ingest_image
         return ingest_image(file_bytes, file.filename, user_id)
     elif ext == "pptx":
+        from ingestion.pptx import ingest_pptx
         return ingest_pptx(file_bytes, file.filename, user_id)
     elif ext == "md":
+        from ingestion.markdown import ingest_markdown
         return ingest_markdown(file_bytes, file.filename, user_id)
 
 @router.post("/website")
 def upload_website(data: URLRequest, request: Request, response: Response):
+    from ingestion.website import ingest_website
     user_id = get_current_user(request, response)
     return ingest_website(data.url, user_id)
 
 @router.post("/youtube")
 def upload_youtube(data: URLRequest, request: Request, response: Response):
+    from ingestion.youtube import ingest_youtube
     user_id = get_current_user(request, response)
     return ingest_youtube(data.url, user_id)

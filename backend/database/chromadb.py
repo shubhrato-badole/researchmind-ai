@@ -1,10 +1,11 @@
 import chromadb
-from config import CHROMA_HOST, CHROMA_PORT
+from config import CHROMA_API_KEY, CHROMA_TENANT, CHROMA_DATABASE
 
 def get_client():
-    return chromadb.HttpClient(
-        host=CHROMA_HOST,
-        port=int(CHROMA_PORT)
+    return chromadb.CloudClient(
+        api_key=CHROMA_API_KEY,
+        tenant=CHROMA_TENANT,
+        database=CHROMA_DATABASE
     )
 
 def get_collection(user_id: str):

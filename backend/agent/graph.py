@@ -4,20 +4,21 @@ from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
-from agent.tools import get_tools
 from agent.memory import (
     get_chat_history,
     save_message,
     get_long_term_memory
 )
-from features.trust_score import get_trust_score
-from retrieval.multi_query import multi_query_search
 from config import GEMINI_API_KEY
+from functools import lru_cache
 
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    google_api_key=GEMINI_API_KEY
+
+@lru_cache(maxsize=1)
+def get_llm():
+    return ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        google_api_key=GEMINI_API_KEY
 )
 
 
@@ -44,7 +45,7 @@ def build_agent(tools):
     doc_tool = tools[0]
     web_tool = tools[1] if len(tools) > 1 else None
 
-    bound_llm = llm.bind_tools(tools)
+    bound_llm = get_llm().bind_tools(tools)
 
     def call_model(state):
         return {"messages": [bound_llm.invoke(state["messages"])]}
@@ -131,6 +132,7 @@ def _build_messages(compressed, query, system_prompt):
 
 
 def run_agent(query: str, user_id: int, search_web: bool = False , session_id: Optional[int] = None):
+    from agent.tools import get_tools
     tools = get_tools(user_id)
 
     if not search_web:
@@ -169,6 +171,7 @@ def run_agent(query: str, user_id: int, search_web: bool = False , session_id: O
 
 
 def resume_agent(user_id: int, approved: bool , session_id: Optional[int] = None):
+    from agent.tools import get_tools
     """resume after human approval"""
     config = {"configurable": {"thread_id": str(user_id)}}
 
@@ -191,6 +194,7 @@ def resume_agent(user_id: int, approved: bool , session_id: Optional[int] = None
 
 
 def stream_agent(query: str, user_id: int, search_web: bool = False , session_id: int | None = None):
+    from agent.tools import get_tools
     """stream answer token by token"""
     tools = get_tools(user_id)
 

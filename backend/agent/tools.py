@@ -1,12 +1,12 @@
 from langchain.tools import tool
-from retrieval.multi_query import multi_query_search
-from agent.web_search import search_web
-from features.trust_score import get_trust_score
 
 def get_tools(user_id: int):
 
     @tool
     def search_documents(query: str) -> str:
+        from retrieval.multi_query import multi_query_search
+        from features.trust_score import get_trust_score
+        
         """Search the user's private knowledge base.
         Use this first for any question."""
 
@@ -43,6 +43,7 @@ def get_tools(user_id: int):
 
     @tool
     def search_internet(query: str) -> str:
+        from agent.web_search import search_web
         """Search the web for current or missing information.
         Use only if documents don't have the answer."""
 

@@ -1,25 +1,17 @@
-from langchain_community.document_loaders import PyPDFLoader
-from ingestion.utils import process_and_store
-import tempfile
-import os
+import chromadb
+from config import CHROMA_API_KEY, CHROMA_TENANT, CHROMA_DATABASE
 
+def get_client():
+    return chromadb.CloudClient(
+        api_key=CHROMA_API_KEY,
+        tenant=CHROMA_TENANT,
+        database=CHROMA_DATABASE
+    )
 
-def ingest_pdf(file_bytes: bytes, filename: str, user_id: int):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(file_bytes)
-        tmp_path = tmp.name
-
-    try:
-        loader = PyPDFLoader(tmp_path)
-        docs = loader.load()
-
-        return process_and_store(
-            docs,
-            filename,
-            "pdf",
-            None,
-            user_id
-        )
-    finally:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+def get_collection(user_id: str):
+    client = get_client()
+    collection = client.get_or_create_collection(
+        name=f"user_{user_id}",
+        metadata={"hnsw:space": "cosine"}
+    )
+    return collection
