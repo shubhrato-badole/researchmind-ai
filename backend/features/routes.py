@@ -145,7 +145,7 @@ async def voice_search(
 class EvalRequest(BaseModel):
     query: str
 
-@router.post("/evaluate")
-def evaluate(data: EvalRequest, request: Request, response: Response):
-    user_id = get_current_user(request, response)
-    return evaluate_rag(data.query, user_id)
+# @router.post("/evaluate")
+# def evaluate(data: EvalRequest, request: Request, response: Response):
+#     user_id = get_current_user(request, response)
+#     return evaluate_rag(data.query, user_id)
