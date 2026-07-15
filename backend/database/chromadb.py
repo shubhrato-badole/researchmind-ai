@@ -1,14 +1,16 @@
-import chromadb 
-from chromadb.config import Settings
+import chromadb
+from config import CHROMA_HOST, CHROMA_PORT
 
-
-client = chromadb.PersistentClient(path="./chromadb_data")
-
-def get_collection(user_id:str):
-    collection_name= f"user{user_id}"
-    collection = client.get_or_create_collection(
-        name=collection_name,
-         metadata={"hnsw:space": "cosine"}
+def get_client():
+    return chromadb.HttpClient(
+        host=CHROMA_HOST,
+        port=int(CHROMA_PORT)
     )
 
+def get_collection(user_id: str):
+    client = get_client()
+    collection = client.get_or_create_collection(
+        name=f"user_{user_id}",
+        metadata={"hnsw:space": "cosine"}
+    )
     return collection

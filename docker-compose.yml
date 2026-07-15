@@ -1,8 +1,5 @@
-version: '3.9'
-
 services:
 
-  # PostgreSQL
   postgres:
     image: postgres:15-alpine
     container_name: researchmind_postgres
@@ -20,7 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis
   redis:
     image: redis:7-alpine
     container_name: researchmind_redis
@@ -34,7 +30,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ChromaDB
   chromadb:
     image: chromadb/chroma:latest
     container_name: researchmind_chromadb
@@ -48,7 +43,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # FastAPI Backend
   backend:
     build:
       context: .
@@ -75,7 +69,6 @@ services:
       - ./backend:/app
     restart: unless-stopped
 
-  # React Frontend + Nginx
   frontend:
     build:
       context: .
@@ -91,4 +84,3 @@ volumes:
   postgres_data:
   redis_data:
   chroma_data:
-  

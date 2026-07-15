@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+
+# Python
+.venv
+venv
+**/.venv
+**/venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Node
+node_modules
+**/node_modules
+frontend/dist
+dist
+build
+
+# Environment
+.env
+*.env
+!backend/.env
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# VS Code
+.vscode
+
+# Python cache
+.pytest_cache
+.mypy_cache
+
+# Docker
+Dockerfile*
+docker-compose.override.yml
+
+backend/venv
+backend/.venv
+venv
+.venv
+**/venv
+**/.venv

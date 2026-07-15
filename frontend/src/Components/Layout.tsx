@@ -40,7 +40,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   );
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [studySets] = useState<SubItem[]>([]);
-  const [roadmapItems] = useState<SubItem[]>([]);
   const { roadmaps } = useRoadmaps();
   const toggleCollapsed = () => {
     setCollapsed((prev) => {

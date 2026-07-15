@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, CheckCircle, Circle, Clock, Flame, BookOpen, Trophy, Map } from 'lucide-react'
@@ -39,14 +39,23 @@ export default function Roadmap() {
 
   const [goal, setGoal] = useState('')
   const [currentKnowledge, setCurrentKnowledge] = useState('')
+  const [createError, setCreateError] = useState('')
 
-  const { data: progress, isLoading: loadingProgress } = useQuery({
+  const {
+    data: progress,
+    isLoading: loadingProgress,
+    isError: progressError,
+    error: progressErrorObj,
+    refetch: refetchProgress
+  } = useQuery({
     queryKey: ['roadmap-progress', selectedRoadmapId],
     queryFn: async () => {
       const res = await client.get(`/roadmap/${selectedRoadmapId}/progress`)
       return res.data as RoadmapProgress
     },
-    enabled: !!selectedRoadmapId
+    enabled: !!selectedRoadmapId,
+    retry: 2,
+    retryDelay: 1000
   })
 
   const createMutation = useMutation({
@@ -56,6 +65,10 @@ export default function Roadmap() {
       setSearchParams({ id: String(res.data.roadmap_id) })
       setGoal('')
       setCurrentKnowledge('')
+      setCreateError('')
+    },
+    onError: (err: any) => {
+      setCreateError(err.response?.data?.detail || 'Failed to generate roadmap. Please try again.')
     }
   })
 
@@ -75,6 +88,7 @@ export default function Roadmap() {
 
   const handleCreate = () => {
     if (!goal.trim()) return
+    setCreateError('')
     createMutation.mutate({
       goal,
       current_knowledge: currentKnowledge || 'beginner'
@@ -128,6 +142,7 @@ export default function Roadmap() {
                       Cancel
                     </Button>
                   </div>
+                  {createError && <p className="text-xs text-red-400">{createError}</p>}
                 </div>
               </div>
             </div>
@@ -150,6 +165,20 @@ export default function Roadmap() {
             <div className="max-w-2xl mx-auto">
               {loadingProgress ? (
                 <div className="flex justify-center py-20"><Spinner /></div>
+              ) : progressError ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+                  <div className="w-14 h-14 bg-[#3a1c1c] rounded-2xl flex items-center justify-center text-3xl">⚠️</div>
+                  <h2 className="text-sm font-semibold text-white">Couldn't load this roadmap</h2>
+                  <p className="text-xs text-[#666] max-w-xs">
+                    {(progressErrorObj as any)?.response?.data?.detail || 'Something went wrong. Please try again.'}
+                  </p>
+                  <button
+                    onClick={() => refetchProgress()}
+                    className="text-xs px-4 py-2 bg-[#534AB7] text-white rounded-lg hover:bg-[#3C3489] transition-colors"
+                  >
+                    Try again
+                  </button>
+                </div>
               ) : progress && (
                 <div className="flex flex-col gap-5">
 

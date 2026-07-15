@@ -17,17 +17,22 @@ interface Message {
   thread_id?: string
 }
 
+interface PendingFile {
+  file: File
+  preview: string
+  type: string
+}
+
 export default function Chat() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const currentSessionId = searchParams.get('session') ? Number(searchParams.get('session')) : null
-
   const { addSessionOptimistic } = useSessions()
-
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [searchMode, setSearchMode] = useState<SearchMode>('docs_web')
+  const [pendingFile, setPendingFile] = useState<PendingFile | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const handleVoiceResult = useCallback((text: string) => setInput(text), [])
@@ -54,25 +59,50 @@ export default function Chat() {
   }
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return
+    if ((!input.trim() && !pendingFile) || loading) return
 
     const query = input.trim()
     setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: query }])
     setLoading(true)
-    try {
-      const res = await client.post('/chat/', { query, search_mode: searchMode })
-      const data = res.data
 
-      if (!currentSessionId && data.session_id) {
-        setSearchParams({ session: String(data.session_id) })
-        addSessionOptimistic({ id: data.session_id, title: query.slice(0, 40), created_at: new Date().toISOString() })
+    setMessages(prev => [...prev, {
+      role: 'user',
+      content: pendingFile ? `📎 ${pendingFile.preview}${query ? '\n' + query : ''}` : query
+    }])
+
+    try {
+      if (pendingFile) {
+        const formData = new FormData()
+        formData.append('file', pendingFile.file)
+        await client.post('/ingest/file', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        setPendingFile(null)
       }
 
-      if (data.status === 'awaiting_approval') {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, awaiting_approval: true, thread_id: data.thread_id }])
+      if (query) {
+        const res = await client.post('/chat/', {
+          query,
+          search_mode: searchMode,
+          session_id: currentSessionId
+        })
+        const data = res.data
+
+        if (!currentSessionId && data.session_id) {
+          setSearchParams({ session: String(data.session_id) })
+          addSessionOptimistic({ id: data.session_id, title: query.slice(0, 40), created_at: new Date().toISOString() })
+        }
+
+        if (data.status === 'awaiting_approval') {
+          setMessages(prev => [...prev, { role: 'assistant', content: data.message, awaiting_approval: true, thread_id: data.thread_id }])
+        } else {
+          setMessages(prev => [...prev, { role: 'assistant', content: data.answer }])
+        }
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.answer }])
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `✅ Added to your knowledge base. Ask me anything about it.`
+        }])
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }])
@@ -189,7 +219,11 @@ export default function Chat() {
         </div>
 
         <div className="px-4 py-3 border-t border-[#3a3a3c] bg-[#2d2d2f] flex items-center gap-2 flex-shrink-0">
-          <AddContentMenu />
+          <AddContentMenu
+            pendingFile={pendingFile}
+            onFileSelected={setPendingFile}
+            onRemove={() => setPendingFile(null)}
+          />
 
           <button
             onClick={toggleMic}
@@ -206,12 +240,12 @@ export default function Chat() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            placeholder="Ask anything..."
+            placeholder={pendingFile ? 'Add a message or just send the file...' : 'Ask anything...'}
             className="flex-1 bg-[#1c1c1e] border border-[#3a3a3c] rounded-full px-4 py-2 text-sm text-white outline-none focus:border-[#534AB7] transition-colors placeholder:text-[#555]"
           />
           <button
             onClick={sendMessage}
-            disabled={loading || !input.trim()}
+            disabled={loading || (!input.trim() && !pendingFile)}
             className="w-8 h-8 rounded-full bg-[#534AB7] flex items-center justify-center text-white flex-shrink-0 disabled:opacity-40 hover:bg-[#3C3489] transition-colors"
           >
             <Send size={14} />

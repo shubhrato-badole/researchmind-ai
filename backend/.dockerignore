@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.git
+
+backend/venv
+backend/.venv
+venv
+.venv
+**/venv
+**/.venv
