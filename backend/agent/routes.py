@@ -41,9 +41,10 @@ def list_sessions(request: Request, response: Response):
 def chat(data: ChatRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
 
+    # map search_mode to search_web bool
     search_web = data.search_mode in ["docs_web", "web"]
 
-
+    # create session if none
     session_id = data.session_id
     if not session_id:
         session_id = create_session(user_id)
