@@ -17,7 +17,7 @@ def get_tools(user_id: int):
                     for r in results:
                         r["trust_score"] = get_trust_score(r.get("metadata", {}))
 
-                
+                    
                     contradiction = None
                     if len(results) >= 2:
                         from features.contradiction import detect_contradictions
