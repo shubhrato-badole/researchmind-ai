@@ -1,15 +1,18 @@
 from sentence_transformers import CrossEncoder
 from config import TOP_K_RERANK
+from functools import lru_cache
 
 
-model  = CrossEncoder("BAAI/bge-reranker-base")
+@lru_cache(maxsize=1)
+def get_model():
+    return CrossEncoder("BAAI/bge-reranker-base")
 
 def rerank(query: str, chunks: list):
     if not chunks:
         return []
 
     pairs = [[query, chunk["content"]] for chunk in chunks]
-    scores = model.predict(pairs)
+    scores = get_model().predict(pairs)
 
     scored = sorted(
         zip(chunks, scores),

@@ -46,7 +46,7 @@ def get_sessions(user_id: int):
 
 def get_chat_history(user_id:int , limit:10):
     conn= get_connection()
-    cur = conn.curser()
+    cur = conn.cursor()
     cur.execute(
         """SELECT role, message FROM chat_history
            WHERE user_id = %s
@@ -55,7 +55,7 @@ def get_chat_history(user_id:int , limit:10):
         (user_id, limit)
     )
 
-    rows=   cur.fetchall()
+    rows=  cur.fetchall()
     cur.close()
     conn.close()
 

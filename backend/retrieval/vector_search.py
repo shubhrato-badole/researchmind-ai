@@ -1,14 +1,17 @@
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from database.chromadb import get_collection
 from config import GEMINI_API_KEY, TOP_K_RETRIEVAL
+from functools import lru_cache
 
-embedding_mode=GoogleGenerativeAIEmbeddings(
-    model="models/embedding-001",
-    google_api_key=GEMINI_API_KEY
-)
+@lru_cache(maxsize=1)
+def get_embeddings():
+    return GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001",
+        google_api_key=GEMINI_API_KEY
+    )
 
 def vector_search(query:str , user_id:int):
-    embedding = embedding_mode(query)
+    embedding = get_embeddings().embed_query(query)
     collection = get_collection(str(user_id))
 
 
@@ -25,4 +28,5 @@ def vector_search(query:str , user_id:int):
             "metadata": results["metadatas"][0][i]
         })
          
-         return chunks
+         
+    return chunks

@@ -36,8 +36,9 @@ def get_tools(user_id: int):
 
                     return response
 
-            except Exception:
-                continue
+            except Exception as e:
+               print(f"Search error: {e}")
+               continue
 
         return "NO_RESULTS"
 
