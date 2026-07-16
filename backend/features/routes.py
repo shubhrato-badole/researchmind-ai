@@ -14,7 +14,7 @@ from features.study_mode import (
     generate_interview_question,
     evaluate_interview_answer
 )
-from features.voice_query import transcribe_voice
+# from features.voice_query import transcribe_voice
 # from features.evaluation import evaluate_rag
 from agent.graph import run_agent
 
@@ -126,26 +126,26 @@ def interview_question(data: InterviewRequest, request: Request, response: Respo
 
 
 
-@router.post("/voice")
-async def voice_search(
-    file: UploadFile = File(...),
-    request: Request = None,
-    response: Response = None
-):
-    user_id = get_current_user(request, response)
-    audio_bytes = await file.read()
-    result = transcribe_voice(audio_bytes, file.filename)
-    if "error" in result:
-        return result
-    answer = run_agent(result["text"], user_id)
-    return {"transcribed": result["text"], "answer": answer}
-
-
-
-class EvalRequest(BaseModel):
-    query: str
-
-# @router.post("/evaluate")
-# def evaluate(data: EvalRequest, request: Request, response: Response):
+# @router.post("/voice")
+# async def voice_search(
+#     file: UploadFile = File(...),
+#     request: Request = None,
+#     response: Response = None
+# ):
 #     user_id = get_current_user(request, response)
-#     return evaluate_rag(data.query, user_id)
+#     audio_bytes = await file.read()
+#     result = transcribe_voice(audio_bytes, file.filename)
+#     if "error" in result:
+#         return result
+#     answer = run_agent(result["text"], user_id)
+#     return {"transcribed": result["text"], "answer": answer}
+
+
+
+# class EvalRequest(BaseModel):
+#     query: str
+
+# # @router.post("/evaluate")
+# # def evaluate(data: EvalRequest, request: Request, response: Response):
+# #     user_id = get_current_user(request, response)
+# #     return evaluate_rag(data.query, user_id)

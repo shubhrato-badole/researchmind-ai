@@ -1,6 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from retrieval.hybrid_search import hybrid_search
-from retrieval.reranker import rerank
+# from retrieval.reranker import rerank
 from config import GEMINI_API_KEY
 from functools import lru_cache
 
@@ -46,6 +46,4 @@ def multi_query_search(query: str, user_id: int):
         return []
     
     combined = list(all_chunks.values())
-    final = rerank(query, combined)
-
-    return final
+    return combined

@@ -17,7 +17,7 @@ def search(
     response: Response
 ):
     from retrieval.hybrid_search import hybrid_search
-    from retrieval.reranker import rerank
+    # from retrieval.reranker import rerank
     user_id = get_current_user(request, response)
 
     chunks = hybrid_search(data.query, user_id)
@@ -25,7 +25,8 @@ def search(
     if not chunks:
         return {"results": [], "message": "No results found"}
 
-    results = rerank(data.query, chunks)
+    # results = rerank(data.query, chunks)
+    results = chunks
 
     return {
         "query": data.query,
