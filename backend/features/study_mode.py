@@ -4,13 +4,14 @@ from database.chromadb import get_collection
 from database.postgres import get_connection
 from config import GEMINI_API_KEY
 import json
+from functools import lru_cache
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    google_api_key=GEMINI_API_KEY
-)
-
-
+@lru_cache(maxsize=1)
+def get_llm():
+    return ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        google_api_key=GEMINI_API_KEY
+    )
 
 def get_user_topics(user_id: int):
     """get all topics extracted from user's documents"""
@@ -45,7 +46,7 @@ def generate_quiz(
     difficulty: str = "medium",
     topic: str = None
 ):
-    # get content — filtered by topic or all docs
+    
     if topic:
         docs = get_chunks_by_topic(user_id, topic)
         if not docs:
@@ -87,7 +88,7 @@ Content:
 Return only the JSON array, nothing else."""
 
     try:
-        response = llm.invoke(prompt)
+        response = get_llm().invoke(prompt)
         text = response.content.strip()
         text = text.replace("```json", "").replace("```", "").strip()
         questions = json.loads(text)
@@ -204,7 +205,7 @@ Content:
 Return only the JSON array, nothing else."""
 
     try:
-        response = llm.invoke(prompt)
+        response = get_llm().invoke(prompt)
         text = response.content.strip()
         text = text.replace("```json", "").replace("```", "").strip()
         cards = json.loads(text)
@@ -244,7 +245,7 @@ Content:
 {sample}"""
 
     try:
-        response = llm.invoke(prompt)
+        response =get_llm().invoke(prompt)
         return {
             "summary": response.content.strip(),
             "topic": topic or "all"
@@ -282,7 +283,7 @@ Content:
 Return only the JSON, nothing else."""
 
     try:
-        response = llm.invoke(prompt)
+        response =get_llm().invoke(prompt)
         text = response.content.strip()
         text = text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
@@ -309,7 +310,7 @@ Return ONLY a JSON object:
 Return only the JSON, nothing else."""
 
     try:
-        response = llm.invoke(prompt)
+        response =get_llm().invoke(prompt)
         text = response.content.strip()
         text = text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
