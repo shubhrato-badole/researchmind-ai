@@ -41,7 +41,7 @@ export default function Login() {
       navigate('/chat')
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Login failed'
-      // backend returned unverified — show OTP step
+   
       if (err.response?.data?.status === 'unverified') {
         setStep('otp')
         return
@@ -83,7 +83,7 @@ export default function Login() {
     <div className="min-h-screen bg-[#111111] flex items-center justify-center">
       <div className="bg-[#1c1c1e] border border-[#2a2a2a] rounded-2xl p-9 w-full max-w-sm">
 
-        {/* Logo */}
+
         <div className="flex items-center gap-3 mb-7">
           <div className="w-11 h-11 bg-[#534AB7] rounded-xl flex items-center justify-center">
             <Brain size={20} color="white" />
@@ -91,7 +91,7 @@ export default function Login() {
           <span className="text-lg font-semibold text-white">ResearchMind</span>
         </div>
 
-        {/* Login step */}
+
         {step === 'login' && (
           <>
             <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
