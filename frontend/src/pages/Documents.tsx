@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Plus, FileText, Globe, Image, FileSpreadsheet, Presentation, File } from 'lucide-react'
+import { Trash2, Plus, FileText, Globe, Image, FileSpreadsheet, Presentation, File, Download } from 'lucide-react'
 import Layout from '../Components/Layout'
 import client from '../Api/client'
 import Spinner from '../Components/ui/Spinner'
@@ -40,6 +40,10 @@ const SOURCE_COLORS: Record<string, string> = {
   markdown: 'text-purple-400'
 }
 
+// File-based source types can be downloaded (they have an s3_key on the backend).
+// URL-based sources (website, youtube) have nothing to download — just a link.
+const DOWNLOADABLE_TYPES = new Set(['pdf', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'pptx', 'md', 'ocr', 'word'])
+
 export default function Documents() {
   const queryClient = useQueryClient()
   const [urlModal, setUrlModal] = useState(false)
@@ -47,11 +51,12 @@ export default function Documents() {
   const [url, setUrl] = useState('')
   const [uploading, setUploading] = useState(false)
   const [urlError, setUrlError] = useState('')
+  const [downloadingId, setDownloadingId] = useState<number | null>(null)
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['documents'],
     queryFn: async () => {
-      const res = await client.get('/documents/')
+      const res = await client.get('/ingest/')
       return res.data.documents as Document[]
     },
     retry: 2,
@@ -61,7 +66,7 @@ export default function Documents() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => client.delete(`/documents/${id}`),
+    mutationFn: (id: number) => client.delete(`/ingest/${id}`),
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey: ['documents'] })
       const previous = queryClient.getQueryData<Document[]>(['documents'])
@@ -79,6 +84,21 @@ export default function Documents() {
       queryClient.invalidateQueries({ queryKey: ['documents'] })
     }
   })
+
+  const handleDownload = async (doc: Document) => {
+    setDownloadingId(doc.id)
+    try {
+      const res = await client.get(`/ingest/${doc.id}/download`)
+      const { download_url } = res.data
+      // Open the presigned S3 URL directly — the browser fetches the file
+      // straight from S3, not through our backend.
+      window.open(download_url, '_blank')
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'File not available for download')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -192,6 +212,7 @@ export default function Documents() {
               {data?.map(doc => {
                 const IconComponent = SOURCE_ICONS[doc.source_type] ?? File
                 const iconColor = SOURCE_COLORS[doc.source_type] ?? 'text-gray-400'
+                const canDownload = DOWNLOADABLE_TYPES.has(doc.source_type)
                 return (
                   <div
                     key={doc.id}
@@ -221,9 +242,20 @@ export default function Documents() {
                         )}
                       </div>
                     </div>
+                    {canDownload && (
+                      <button
+                        onClick={() => handleDownload(doc)}
+                        disabled={downloadingId === doc.id}
+                        className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#7C75D4] transition-all disabled:opacity-50"
+                        title="Download original file"
+                      >
+                        {downloadingId === doc.id ? <Spinner size="sm" /> : <Download size={15} />}
+                      </button>
+                    )}
                     <button
                       onClick={() => deleteMutation.mutate(doc.id)}
                       className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-red-400 transition-all"
+                      title="Delete document"
                     >
                       <Trash2 size={15} />
                     </button>
