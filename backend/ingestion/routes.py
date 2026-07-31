@@ -2,9 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Request, Response, HTTPExceptio
 from pydantic import BaseModel
 from auth.jwt import get_current_user
 from fastapi import Depends
-import sys
-sys.path.append('..')
-from s3_utils import upload_file_to_s3, generate_presigned_url, delete_file_from_s3
+from ingestion.s3_utils import upload_file_to_s3, generate_presigned_url, delete_file_from_s3
 from database.postgres import get_connection
 import uuid
 
