@@ -36,7 +36,9 @@ def create_tables():
             title VARCHAR(500),
             source_type VARCHAR(50),
             source_url TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            s3_key TEXT
+
         )
     """)
 
