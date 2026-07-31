@@ -24,3 +24,4 @@ redis==8.0.1
 slowapi==0.1.10
 python-pptx
 uvicorn
+boto3==1.43.61
