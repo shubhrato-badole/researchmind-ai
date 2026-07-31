@@ -253,7 +253,7 @@ export default function Documents() {
                       </button>
                     )}
                     <button
-                      onClick={() => deleteMutation.mutate(doc.id)}
+                      onClick={() => deleteMutation.mutate({ id: doc.id })}
                       className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-red-400 transition-all"
                       title="Delete document"
                     >
