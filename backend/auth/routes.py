@@ -285,16 +285,13 @@ async def google_callback(request: Request, response: Response):
         print(e)
         raise
     
-
-
-
 @router.get("/me")
 def me(request: Request, response: Response):
     user_id = get_current_user(request, response)
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, name, email, auth_provider FROM users WHERE id = %s",
+        "SELECT id, name, email, auth_provider, plan FROM users WHERE id = %s",
         (user_id,)
     )
     user = cur.fetchone()
@@ -307,7 +304,8 @@ def me(request: Request, response: Response):
             "id": user[0],
             "name": user[1],
             "email": user[2],
-            "auth_provider": user[3]
+            "auth_provider": user[3],
+            "plan": user[4]
         }
     }
 
