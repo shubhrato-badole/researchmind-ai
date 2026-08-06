@@ -6,6 +6,7 @@ from ingestion.website import ingest_website
 from config import GEMINI_API_KEY
 import json
 from datetime import date
+from limit.rate_limiter import check_roadmap_limit, mark_roadmap_generated
 
 
 llm = ChatGoogleGenerativeAI(
@@ -15,7 +16,11 @@ llm = ChatGoogleGenerativeAI(
 
 
 def generate_roadmap(goal:str, user_id:int , current_knowledge:str):
-    """generate personalised roadmap based on skill gap"""
+    allowed, days_left = check_roadmap_limit(user_id)
+    if not allowed:
+        return {"error": f"You've used your free roadmap. Come back in {days_left} days or upgrade to Pro."}
+
+
     prompt= f""" Create a personilised learning roadmap
 
 
@@ -73,7 +78,7 @@ def generate_roadmap(goal:str, user_id:int , current_knowledge:str):
         conn.commit()
         cur.close()
         conn.close()
-  
+        mark_roadmap_generated(user_id)
         return {
             "roadmap_id": roadmap_id,
             "goal": goal,
@@ -90,7 +95,7 @@ def start_step(roadmap_id:int , step_number: int , user_id:int):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""SELECT tittle, description FROM roadmap_steps WHERE roadmap_id = %s AND step_number = %s""" , (roadmap_id , step_number))
+    cur.execute("""SELECT title, description FROM roadmap_steps WHERE roadmap_id = %s AND step_number = %s""" , (roadmap_id , step_number))
 
     step = cur.fetchone()
 
