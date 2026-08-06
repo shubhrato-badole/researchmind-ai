@@ -5,6 +5,8 @@ from database.postgres import get_connection
 from config import GEMINI_API_KEY
 import json
 from functools import lru_cache
+from limit.rate_limiter import  check_daily_limit
+
 
 @lru_cache(maxsize=1)
 def get_llm():
@@ -46,6 +48,9 @@ def generate_quiz(
     difficulty: str = "medium",
     topic: str = None
 ):
+    allowed, remaining, limit = check_daily_limit(user_id, "quiz")
+    if not allowed:
+        return {"error": f"Daily quiz limit reached ({limit}/day). Upgrade to Pro for unlimited."}
     
     if topic:
         docs = get_chunks_by_topic(user_id, topic)
