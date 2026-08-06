@@ -5,6 +5,7 @@ from fastapi import Depends
 from ingestion.s3_utils import upload_file_to_s3, generate_presigned_url, delete_file_from_s3
 from database.postgres import get_connection
 import uuid
+from limit.rate_limiter import check_document_limit
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"],
     dependencies=[Depends(get_current_user)])
@@ -25,8 +26,13 @@ async def upload_file(
     response: Response = None
 ):
     user_id = get_current_user(request, response)
-    ext = get_extension(file.filename)
+    
 
+    allowed, count = check_document_limit(user_id)
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Document limit reached (5 max). Upgrade to Pro for unlimited uploads.")
+    
+    ext = get_extension(file.filename)
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"File type .{ext} not supported")
 
