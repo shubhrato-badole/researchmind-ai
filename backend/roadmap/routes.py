@@ -32,7 +32,7 @@ class CompleteStepRequest(BaseModel):
 @router.post("/")
 def create_roadmap(data: RoadmapRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_roadmap(data.goal, data.current_knowledge, user_id)
+    return generate_roadmap(data.goal, user_id, data.current_knowledge)
 
 @router.get("/")
 def my_roadmaps(request: Request, response: Response):
