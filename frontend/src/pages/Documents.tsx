@@ -7,6 +7,7 @@ import Spinner from '../Components/ui/Spinner'
 import Modal from '../Components/ui/Modal'
 import Button from '../Components/ui/button'
 import Input from '../Components/ui/input'
+import LimitReachedModal from '../Components/LimitReachedModal'
 
 interface Document {
   id: number
@@ -52,6 +53,8 @@ export default function Documents() {
   const [uploading, setUploading] = useState(false)
   const [urlError, setUrlError] = useState('')
   const [downloadingId, setDownloadingId] = useState<number | null>(null)
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
+  const [limitMessage, setLimitMessage] = useState('')
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['documents'],
@@ -112,8 +115,12 @@ export default function Documents() {
       })
       queryClient.invalidateQueries({ queryKey: ['documents'] })
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Upload failed')
-    } finally {
+       if (err.response?.status === 429 || err.response?.status === 403) {
+    setLimitMessage(err.response?.data?.detail || 'Limit reached')
+    setLimitModalOpen(true)
+  } else {
+    alert(err.response?.data?.detail || 'Upload failed')
+  } } finally {
       setUploading(false)
       e.target.value = ''
     }
@@ -288,6 +295,11 @@ export default function Documents() {
           </Button>
         </div>
       </Modal>
+      <LimitReachedModal
+  open={limitModalOpen}
+  onClose={() => setLimitModalOpen(false)}
+  message={limitMessage}
+/>
     </Layout>
   )
 }
