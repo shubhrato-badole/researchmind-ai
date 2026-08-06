@@ -1,14 +1,14 @@
 from langchain.tools import tool
 
+
 def get_tools(user_id: int):
 
     @tool
     def search_documents(query: str) -> str:
-        from retrieval.multi_query import multi_query_search
-        from features.trust_score import get_trust_score
-        
         """Search the user's private knowledge base.
         Use this first for any question."""
+        from retrieval.multi_query import multi_query_search
+        from features.trust_score import get_trust_score
 
         for attempt in range(3):
             try:
@@ -17,7 +17,6 @@ def get_tools(user_id: int):
                     for r in results:
                         r["trust_score"] = get_trust_score(r.get("metadata", {}))
 
-                    
                     contradiction = None
                     if len(results) >= 2:
                         from features.contradiction import detect_contradictions
@@ -30,23 +29,27 @@ def get_tools(user_id: int):
                         trust = r["trust_score"]
                         response += f"\n[{source_type}: {source} | trust: {trust}/100]\n{r['content']}\n"
 
-                   
                     if contradiction:
                         response += f"\n\n⚠ NOTE: Potential contradiction — {contradiction['message']}"
 
                     return response
 
             except Exception as e:
-               print(f"Search error: {e}")
-               continue
+                print(f"Search error: {e}")
+                continue
 
         return "NO_RESULTS"
 
     @tool
     def search_internet(query: str) -> str:
-        from agent.web_search import search_web
         """Search the web for current or missing information.
         Use only if documents don't have the answer."""
+        from agent.web_search import search_web
+        from limit.rate_limiter import check_daily_limit
+
+        allowed, remaining, limit = check_daily_limit(user_id, "web_search")
+        if not allowed:
+            return f"WEB_SEARCH_LIMIT_REACHED: Daily web search limit reached ({limit}/day). Upgrade to Pro for unlimited."
 
         for attempt in range(3):
             try:
