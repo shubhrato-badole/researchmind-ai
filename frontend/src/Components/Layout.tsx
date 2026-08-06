@@ -177,11 +177,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     return (
                       <div
                         key={session.id}
-                        className={`group flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg mb-0.5 text-xs cursor-pointer transition-colors ${
-                          isActive
-                            ? "bg-[#1e1b4b] text-[#7C75D4] font-medium"
-                            : "text-[#888] hover:text-white hover:bg-[#2d2d2f]"
-                        }`}
+                        className={`group flex items-center justify-between gap-1 px-2 py-1.5 rounded-lg mb-0.5 text-xs cursor-pointer transition-colors ${isActive
+                          ? "bg-[#1e1b4b] text-[#7C75D4] font-medium"
+                          : "text-[#888] hover:text-white hover:bg-[#2d2d2f]"
+                          }`}
                         onClick={() => !isConfirming && openSession(session.id)}
                       >
                         {isConfirming ? (
@@ -244,10 +243,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <NavLink
                 to="/documents"
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm mb-0.5 transition-colors ${
-                    isActive
-                      ? "bg-[#1e1b4b] text-[#7C75D4] font-medium"
-                      : "text-[#888] hover:text-white hover:bg-[#2d2d2f]"
+                  `flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm mb-0.5 transition-colors ${isActive
+                    ? "bg-[#1e1b4b] text-[#7C75D4] font-medium"
+                    : "text-[#888] hover:text-white hover:bg-[#2d2d2f]"
                   }`
                 }
               >
@@ -358,10 +356,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="w-7 h-7 bg-[#1e1b4b] rounded-full flex items-center justify-center text-xs font-medium text-[#7C75D4] flex-shrink-0">
                   {user?.name?.[0]?.toUpperCase()}
                 </div>
-                <span className="text-xs font-medium text-white truncate">
-                  {user?.name}
-                </span>
+                <div className="flex-1 min-w-0 text-left">
+                  <span className="text-xs font-medium text-white truncate block">
+                    {user?.name}
+                  </span>
+                  <span className={`text-[10px] ${user?.plan === 'pro' ? 'text-[#AFA9EC]' : 'text-[#666]'}`}>
+                    {user?.plan === 'pro' ? 'Pro' : 'Free'}
+                  </span>
+                </div>
               </button>
+              {user?.plan === 'free' && (
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="text-[10px] text-[#7C75D4] hover:underline mb-2 block"
+                >
+                  Upgrade to Pro
+                </button>
+              )}
               <button
                 onClick={logout}
                 className="text-xs text-[#555] hover:text-[#999] transition-colors"
