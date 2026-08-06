@@ -42,6 +42,7 @@ from features.routes import router as features_router
 
 print("Importing roadmap router")
 from roadmap.routes import router as roadmap_router
+from payment.routes import router as payment_router
 
 print("Finished all imports")
 
@@ -95,6 +96,8 @@ app.include_router(features_router)
 
 print("Including roadmap router")
 app.include_router(roadmap_router)
+
+app.include_router(payment_router)
 
 print("Routers registered successfully")
 
