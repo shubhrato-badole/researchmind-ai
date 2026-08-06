@@ -25,3 +25,4 @@ slowapi==0.1.10
 python-pptx
 uvicorn
 boto3==1.43.61
+razorpay==1.4.2
