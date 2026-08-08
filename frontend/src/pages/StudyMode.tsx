@@ -8,6 +8,7 @@ import Button from '../Components/ui/button'
 import DocumentPicker from '../Components/DocumentPicker'
 import { useDocuments } from '../hooks/useDocuments'
 import { useTopics } from '../hooks/useTopics'
+import LimitReachedModal from '../Components/LimitReachedModal'
 
 type Tab = 'quiz' | 'flashcards' | 'summary' | 'interview'
 type Difficulty = 'easy' | 'medium' | 'hard'
@@ -52,7 +53,8 @@ export default function StudyMode() {
   const [flipped, setFlipped] = useState(false)
   const [currentCard, setCurrentCard] = useState(0)
   const [loading, setLoading] = useState(false)
-
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
+  const [limitMessage, setLimitMessage] = useState('')
   const hasSelection = selectedDocIds.length > 0
 
   const generateQuiz = async () => {
@@ -71,7 +73,12 @@ export default function StudyMode() {
         topic: selectedTopic
       })
       setQuestions(res.data.questions)
-    } finally {
+    } catch (err: any) {
+    if (err.response?.status === 429) {
+      setLimitMessage(err.response.data.detail)
+      setLimitModalOpen(true)
+    }
+  }finally {
       setLoading(false)
     }
   }
@@ -517,6 +524,11 @@ export default function StudyMode() {
           )}
         </div>
       </div>
+      <LimitReachedModal
+  open={limitModalOpen}
+  onClose={() => setLimitModalOpen(false)}
+  message={limitMessage}
+/>
     </Layout>
   )
 }
