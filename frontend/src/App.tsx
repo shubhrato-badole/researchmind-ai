@@ -38,9 +38,9 @@ export default function App() {
       <Route path="/enterprise" element={<Enterprise />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/pricing" element={<Pricing />} />
-      <Route path="/chat" element={<ProtectedRoute><Chat /> </ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute> }/>
+      <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+      <Route path="/chat" element={<ProtectedRoute><Chat /> </ProtectedRoute>} /> 
+     <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute> }/>
       <Route path="/study" element={<ProtectedRoute><StudyMode /></ProtectedRoute>} />
       <Route path="/roadmap" element={<ProtectedRoute><Roadmap /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
