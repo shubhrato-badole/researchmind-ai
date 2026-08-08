@@ -8,6 +8,7 @@ import Spinner from '../Components/ui/Spinner'
 import Button from '../Components/ui/button'
 import Input from '../Components/ui/input'
 import { useRoadmaps } from '../hooks/useRoadmaps'
+import LimitReachedModal from '../Components/LimitReachedModal'
 
 interface RoadmapStep {
   step_number: number
@@ -40,7 +41,8 @@ export default function Roadmap() {
   const [goal, setGoal] = useState('')
   const [currentKnowledge, setCurrentKnowledge] = useState('')
   const [createError, setCreateError] = useState('')
-
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
+  const [limitMessage, setLimitMessage] = useState('')
   const {
     data: progress,
     isLoading: loadingProgress,
@@ -59,18 +61,23 @@ export default function Roadmap() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => client.post('/roadmap/', data),
-    onSuccess: (res) => {
-      refetchRoadmaps()
-      setSearchParams({ id: String(res.data.roadmap_id) })
-      setGoal('')
-      setCurrentKnowledge('')
-      setCreateError('')
-    },
-    onError: (err: any) => {
-      setCreateError(err.response?.data?.detail || 'Failed to generate roadmap. Please try again.')
+  mutationFn: (data: any) => client.post('/roadmap/', data),
+  onSuccess: (res) => {
+    if (res.data.error) {
+      setLimitMessage(res.data.error)
+      setLimitModalOpen(true)
+      return
     }
-  })
+    refetchRoadmaps()
+    setSearchParams({ id: String(res.data.roadmap_id) })
+    setGoal('')
+    setCurrentKnowledge('')
+    setCreateError('')
+  },
+  onError: (err: any) => {
+    setCreateError(err.response?.data?.detail || 'Failed to generate roadmap. Please try again.')
+  }
+})
 
   const startStepMutation = useMutation({
     mutationFn: (data: any) => client.post('/roadmap/start-step', data),
@@ -292,6 +299,11 @@ export default function Roadmap() {
           )}
         </div>
       </div>
+      <LimitReachedModal
+  open={limitModalOpen}
+  onClose={() => setLimitModalOpen(false)}
+  message={limitMessage}
+/>
     </Layout>
   )
 }
