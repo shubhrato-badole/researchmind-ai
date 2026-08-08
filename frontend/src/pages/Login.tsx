@@ -129,7 +129,7 @@ export default function Login() {
             <Button
               variant="ghost"
               className="w-full"
-              onClick={() => window.location.href = '/api/auth/google/login'}
+             onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/auth/google/login`}
             >
               <img src="https://www.google.com/favicon.ico" width="16" height="16" alt="G" />
               Continue with Google
