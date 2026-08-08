@@ -16,7 +16,6 @@ import client from "../Api/client";
 import { useAuth } from "../context/AuthContext";
 import { useDocuments } from "../hooks/useDocuments";
 import { useSessions } from "../hooks/useSessions";
-import UpgradeButton from "../Components/UpgradeButton";
 export default function Profile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -140,7 +139,12 @@ export default function Profile() {
                     <p className="text-xs text-[#888] mb-3">
                       Upgrade for unlimited search, quizzes, roadmaps, and document uploads.
                     </p>
-                    <UpgradeButton />
+                    <button
+                      onClick={() => navigate('/pricing')}
+                      className="w-full bg-[#7F77DD] text-[#26215C] font-medium text-sm py-2 rounded-lg hover:bg-[#AFA9EC] transition-colors"
+                    >
+                      View plans
+                    </button>
                   </>
                 ) : (
                   <p className="text-xs text-[#5DCAA5]">Unlimited access to everything.</p>
