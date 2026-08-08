@@ -349,9 +349,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </nav>
 
             <div className="p-3 border-t border-[#3a3a3c]">
+              {user?.plan === 'free' && (
+                <button
+                  onClick={() => navigate("/pricing")}
+                  className="w-full text-left bg-[#7F77DD] text-[#26215C] font-medium px-3 py-2 rounded-lg text-xs mb-3 flex items-center gap-2 hover:bg-[#AFA9EC] transition-colors"
+                >
+                  Upgrade to Pro
+                </button>
+              )}
               <button
                 onClick={() => navigate("/profile")}
-                className="w-full flex items-center gap-2 mb-2 hover:bg-[#2d2d2f] rounded-lg px-1 py-1 -mx-1 transition-colors"
+                className="w-full flex items-center gap-2 hover:bg-[#2d2d2f] rounded-lg px-1 py-1 -mx-1 transition-colors"
               >
                 <div className="w-7 h-7 bg-[#1e1b4b] rounded-full flex items-center justify-center text-xs font-medium text-[#7C75D4] flex-shrink-0">
                   {user?.name?.[0]?.toUpperCase()}
@@ -360,22 +368,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <span className="text-xs font-medium text-white truncate block">
                     {user?.name}
                   </span>
-                  <span className={`text-[10px] ${user?.plan === 'pro' ? 'text-[#AFA9EC]' : 'text-[#666]'}`}>
+                  <span className="text-[10px] text-[#666]">
                     {user?.plan === 'pro' ? 'Pro' : 'Free'}
                   </span>
                 </div>
               </button>
-              {user?.plan === 'free' && (
-                <button
-                  onClick={() => navigate('/profile')}
-                  className="text-[10px] text-[#7C75D4] hover:underline mb-2 block"
-                >
-                  Upgrade to Pro
-                </button>
-              )}
+
               <button
                 onClick={logout}
-                className="text-xs text-[#555] hover:text-[#999] transition-colors"
+                className="text-xs text-[#555] hover:text-[#999] transition-colors mt-2"
               >
                 Sign out
               </button>
