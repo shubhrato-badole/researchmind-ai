@@ -16,7 +16,7 @@ import client from "../Api/client";
 import { useAuth } from "../context/AuthContext";
 import { useDocuments } from "../hooks/useDocuments";
 import { useSessions } from "../hooks/useSessions";
-
+import UpgradeButton from "../Components/UpgradeButton";
 export default function Profile() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -120,6 +120,31 @@ export default function Profile() {
                   </p>
                   <p className="text-xs text-[#666]">Chats</p>
                 </div>
+              </div>
+            </div>
+
+
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-[#666] mb-2">Plan</p>
+              <div className="bg-[#1c1c1e] border border-[#2a2a2a] rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-white font-medium">
+                    {user?.plan === 'pro' ? 'Pro' : 'Free'}
+                  </span>
+                  {user?.plan === 'pro' && (
+                    <span className="text-[10px] px-2 py-0.5 bg-[#3C3489] text-[#CECBF6] rounded-full">Active</span>
+                  )}
+                </div>
+                {user?.plan === 'free' ? (
+                  <>
+                    <p className="text-xs text-[#888] mb-3">
+                      Upgrade for unlimited search, quizzes, roadmaps, and document uploads.
+                    </p>
+                    <UpgradeButton />
+                  </>
+                ) : (
+                  <p className="text-xs text-[#5DCAA5]">Unlimited access to everything.</p>
+                )}
               </div>
             </div>
 
