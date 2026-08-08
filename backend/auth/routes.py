@@ -23,10 +23,10 @@ class SignupRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: str
-    pasword:str
+    password:str
     captcha_token: str
 
-class ChangePasswordResuest(BaseModel):
+class ChangePasswordRequest(BaseModel):
      current_password: str
      new_password:str
 
@@ -44,11 +44,11 @@ class RefreshRequest(BaseModel):
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
     response.set_cookie(
         key="access_token", value=access_token,
-        httponly=True, max_age=1800, samesite="lax"
+        httponly=True, max_age=1800, samesite="none", secure=True
     )
     response.set_cookie(
         key="refresh_token", value=refresh_token,
-        httponly=True, max_age=604800, samesite="lax"
+        httponly=True, max_age=604800, samesite="none", secure=True
     )
 
 def save_refresh_token(user_id: int, refresh_token: str):
@@ -271,11 +271,11 @@ async def google_callback(request: Request, response: Response):
         redirect = RedirectResponse(url=f"{FRONTEND_URL}/chat")
         redirect.set_cookie(
             key="access_token", value=access_token,
-            httponly=True, max_age=1800, samesite="lax"
+            httponly=True, max_age=1800, samesite="none", secure=True
         )
         redirect.set_cookie(
             key="refresh_token", value=refresh_token,
-            httponly=True, max_age=604800, samesite="lax"
+            httponly=True, max_age=604800, samesite="none", secure=True
         )
         print("Redirecting to:", f"{FRONTEND_URL}/chat")
         return redirect
@@ -335,7 +335,7 @@ def refresh(request: Request, response: Response):
     access_token = create_access_token(user_id)
     response.set_cookie(
         key="access_token", value=access_token,
-        httponly=True, max_age=1800, samesite="lax"
+        httponly=True, max_age=1800, samesite="none", secure=True
     )
     return {"message": "Token refreshed"}
 
@@ -361,7 +361,7 @@ def logout(request: Request, response: Response):
 
 @router.post("/change-password")
 def change_password(
-    data: ChangePasswordResuest,
+    data: ChangePasswordRequest,
     request: Request,
     response: Response
 ):
