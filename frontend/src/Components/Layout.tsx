@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
+  LogOut,
 } from "lucide-react";
 
 interface SubItem {
@@ -351,34 +352,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="p-3 border-t border-[#3a3a3c]">
               {user?.plan === 'free' && (
                 <button
-                  onClick={() => navigate("/pricing")}
-                  className="w-full text-left bg-[#7F77DD] text-[#26215C] font-medium px-3 py-2 rounded-lg text-xs mb-3 flex items-center gap-2 hover:bg-[#AFA9EC] transition-colors"
+                  onClick={() => navigate('/pricing')}
+                  className="w-full bg-[#7F77DD] text-[#26215C] font-medium px-3 py-2 rounded-lg text-xs mb-3 hover:bg-[#AFA9EC] transition-colors"
                 >
                   Upgrade to Pro
                 </button>
               )}
+
               <button
                 onClick={() => navigate("/profile")}
-                className="w-full flex items-center gap-2 hover:bg-[#2d2d2f] rounded-lg px-1 py-1 -mx-1 transition-colors"
+                className="w-full flex items-center gap-2.5 py-2 border-t border-b border-[#2a2a2a] hover:bg-[#2d2d2f] transition-colors px-1"
               >
-                <div className="w-7 h-7 bg-[#1e1b4b] rounded-full flex items-center justify-center text-xs font-medium text-[#7C75D4] flex-shrink-0">
+                <div className="w-8 h-8 bg-[#1e1b4b] rounded-full flex items-center justify-center text-xs font-medium text-[#7C75D4] flex-shrink-0">
                   {user?.name?.[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <span className="text-xs font-medium text-white truncate block">
                     {user?.name}
                   </span>
-                  <span className="text-[10px] text-[#666]">
-                    {user?.plan === 'pro' ? 'Pro' : 'Free'}
+                  <span className="text-[11px] text-[#7F77DD]">
+                    {user?.plan === 'pro' ? 'Pro plan' : 'Free plan'}
                   </span>
                 </div>
               </button>
 
               <button
                 onClick={logout}
-                className="text-xs text-[#555] hover:text-[#999] transition-colors mt-2"
+                className="w-full flex items-center gap-2 text-xs text-[#888] hover:text-white transition-colors px-1 py-2"
               >
-                Sign out
+                <LogOut size={14} /> Sign out
               </button>
             </div>
           </>
