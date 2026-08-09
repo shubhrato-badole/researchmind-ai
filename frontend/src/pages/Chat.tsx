@@ -55,7 +55,7 @@ export default function Chat() {
       const res = await client.get(`/chat/history?session_id=${sessionId}`)
       const history = res.data.history.map((msg: any) => ({ role: msg.role, content: msg.message }))
       setMessages(history)
-    } catch {}
+    } catch { }
   }
 
   const sendMessage = async () => {
@@ -184,11 +184,10 @@ export default function Chat() {
                     {userInitial}
                   </div>
                 )}
-                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === 'user'
+                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
                     ? 'bg-[#534AB7] text-white rounded-br-sm'
                     : 'bg-[#1c1c1e] text-white border border-[#3a3a3c] rounded-bl-sm'
-                }`}>
+                  }`}>
                   {msg.content}
                 </div>
               </div>
@@ -210,8 +209,11 @@ export default function Chat() {
               <div className="w-7 h-7 rounded-lg bg-[#534AB7] flex items-center justify-center flex-shrink-0">
                 <Brain size={14} color="white" />
               </div>
-              <div className="bg-[#1c1c1e] border border-[#3a3a3c] rounded-2xl rounded-bl-sm px-4 py-3">
-                <Spinner size="sm" />
+              <div className="bg-[#1c1c1e] border border-[#3a3a3c] rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
+                <span className="text-xs text-[#888] mr-1">Thinking</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7C75D4] animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7C75D4] animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7C75D4] animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           )}
@@ -229,9 +231,8 @@ export default function Chat() {
             onClick={toggleMic}
             disabled={!micSupported}
             title={micSupported ? 'Voice input' : 'Voice input not supported in this browser'}
-            className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors flex-shrink-0 disabled:opacity-30 ${
-              listening ? 'border-red-400 text-red-400' : 'border-[#3a3a3c] text-[#666] hover:text-white'
-            }`}
+            className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors flex-shrink-0 disabled:opacity-30 ${listening ? 'border-red-400 text-red-400' : 'border-[#3a3a3c] text-[#666] hover:text-white'
+              }`}
           >
             <Mic size={15} />
           </button>
