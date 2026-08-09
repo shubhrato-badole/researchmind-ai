@@ -41,8 +41,7 @@ const SOURCE_COLORS: Record<string, string> = {
   markdown: 'text-purple-400'
 }
 
-// File-based source types can be downloaded (they have an s3_key on the backend).
-// URL-based sources (website, youtube) have nothing to download — just a link.
+
 const DOWNLOADABLE_TYPES = new Set(['pdf', 'docx', 'txt', 'csv', 'png', 'jpg', 'jpeg', 'pptx', 'md', 'ocr', 'word'])
 
 export default function Documents() {
@@ -115,12 +114,13 @@ export default function Documents() {
       })
       queryClient.invalidateQueries({ queryKey: ['documents'] })
     } catch (err: any) {
-       if (err.response?.status === 429 || err.response?.status === 403) {
-    setLimitMessage(err.response?.data?.detail || 'Limit reached')
-    setLimitModalOpen(true)
-  } else {
-    alert(err.response?.data?.detail || 'Upload failed')
-  } } finally {
+      if (err.response?.status === 429 || err.response?.status === 403) {
+        setLimitMessage(err.response?.data?.detail || 'Limit reached')
+        setLimitModalOpen(true)
+      } else {
+        alert(err.response?.data?.detail || 'Upload failed')
+      }
+    } finally {
       setUploading(false)
       e.target.value = ''
     }
@@ -237,7 +237,7 @@ export default function Documents() {
                         {doc.source_url && (
                           <>
                             <span className="text-xs text-[#444]">·</span>
-                            <a 
+                            <a
                               href={doc.source_url}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -279,12 +279,13 @@ export default function Documents() {
         onClose={() => { setUrlModal(false); setUrl(''); setUrlError('') }}
         title={urlType === 'website' ? 'Add website' : 'Add YouTube video'}
       >
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col items-center gap-3">
           <Input
             value={url}
             onChange={e => setUrl(e.target.value)}
             placeholder={urlType === 'website' ? 'https://example.com' : 'https://youtube.com/watch?v=...'}
             error={urlError}
+            className="text-center w-full"
           />
           <Button
             onClick={handleUrlIngest}
@@ -296,10 +297,10 @@ export default function Documents() {
         </div>
       </Modal>
       <LimitReachedModal
-  open={limitModalOpen}
-  onClose={() => setLimitModalOpen(false)}
-  message={limitMessage}
-/>
+        open={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        message={limitMessage}
+      />
     </Layout>
   )
 }
