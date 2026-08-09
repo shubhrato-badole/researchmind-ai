@@ -53,6 +53,7 @@ export default function StudyMode() {
   const [flipped, setFlipped] = useState(false)
   const [currentCard, setCurrentCard] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [submittingScore, setSubmittingScore] = useState(false)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
   const [limitMessage, setLimitMessage] = useState('')
   const hasSelection = selectedDocIds.length > 0
@@ -74,11 +75,11 @@ export default function StudyMode() {
       })
       setQuestions(res.data.questions)
     } catch (err: any) {
-    if (err.response?.status === 429) {
-      setLimitMessage(err.response.data.detail)
-      setLimitModalOpen(true)
-    }
-  }finally {
+      if (err.response?.status === 429) {
+        setLimitMessage(err.response.data.detail)
+        setLimitModalOpen(true)
+      }
+    } finally {
       setLoading(false)
     }
   }
@@ -94,14 +95,19 @@ export default function StudyMode() {
 
   const nextQuestion = async () => {
     if (currentQ + 1 >= questions.length) {
-      await client.post('/features/quiz/score', {
-        score,
-        total: questions.length,
-        document_ids: selectedDocIds,
-        topic: selectedTopic,
-        difficulty
-      })
-      setQuizDone(true)
+      setSubmittingScore(true)
+      try {
+        await client.post('/features/quiz/score', {
+          score,
+          total: questions.length,
+          document_ids: selectedDocIds,
+          topic: selectedTopic,
+          difficulty
+        })
+        setQuizDone(true)
+      } finally {
+        setSubmittingScore(false)
+      }
     } else {
       setCurrentQ(q => q + 1)
       setSelected(null)
@@ -333,8 +339,8 @@ export default function StudyMode() {
                       )}
                       {checked && (
                         <div className="flex justify-end">
-                          <Button onClick={nextQuestion} size="sm">
-                            {currentQ + 1 >= questions.length ? 'Finish' : 'Next'} <ChevronRight size={14} />
+                          <Button onClick={nextQuestion} size="sm" disabled={submittingScore}>
+                            {submittingScore ? 'Saving...' : (currentQ + 1 >= questions.length ? 'Finish' : 'Next')} <ChevronRight size={14} />
                           </Button>
                         </div>
                       )}
@@ -481,8 +487,8 @@ export default function StudyMode() {
                             className="w-full bg-transparent text-sm text-white outline-none resize-none placeholder:text-[#555]"
                           />
                           <div className="flex justify-end mt-3">
-                            <Button onClick={evaluateAnswer} disabled={!interviewAnswer.trim()} size="sm">
-                              Submit answer
+                            <Button onClick={evaluateAnswer} disabled={!interviewAnswer.trim() || loading} size="sm">
+                              {loading ? 'Evaluating...' : 'Submit answer'}
                             </Button>
                           </div>
                         </div>
@@ -525,10 +531,10 @@ export default function StudyMode() {
         </div>
       </div>
       <LimitReachedModal
-  open={limitModalOpen}
-  onClose={() => setLimitModalOpen(false)}
-  message={limitMessage}
-/>
+        open={limitModalOpen}
+        onClose={() => setLimitModalOpen(false)}
+        message={limitMessage}
+      />
     </Layout>
   )
 }
