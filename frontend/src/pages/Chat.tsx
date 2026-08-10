@@ -113,7 +113,7 @@ export default function Chat() {
   const handleApproval = async (threadId: string, approved: boolean) => {
     setLoading(true)
     try {
-      const res = await client.post('/chat/resume', { thread_id: threadId, approved })
+      const res = await client.post('/chat/resume', { thread_id: threadId, approved, session_id: currentSessionId })
       setMessages(prev => [...prev.filter(m => !m.awaiting_approval), { role: 'assistant', content: res.data.answer }])
     } finally {
       setLoading(false)
