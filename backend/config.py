@@ -16,7 +16,7 @@ CHROMA_API_KEY = os.getenv("CHROMA_API_KEY")
 CHROMA_TENANT = os.getenv("CHROMA_TENANT")
 CHROMA_DATABASE = os.getenv("CHROMA_DATABASE")
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+REDIS_URL = os.getenv("REDIS_HOST", "redis://localhost:6379")
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
