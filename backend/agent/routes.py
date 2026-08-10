@@ -22,6 +22,7 @@ class ChatRequest(BaseModel):
 class ResumeRequest(BaseModel):
     thread_id: str
     approved: bool
+    session_id: Optional[int] = None
 
 class NewSessionRequest(BaseModel):
     title: str = "New chat"
@@ -41,9 +42,9 @@ def new_session(data: NewSessionRequest, request: Request, response: Response):
 
 @router.get("/sessions")
 def list_sessions(request: Request, response: Response):
+    from agent.memory import get_sessions
     user_id = get_current_user(request, response)
-    return {"sessions": []}
-
+    return {"sessions": get_sessions(user_id)}
 
 
 
@@ -83,9 +84,8 @@ def chat(data: ChatRequest, request: Request, response: Response):
 def resume(data: ResumeRequest, request: Request, response: Response):
     from agent.graph import resume_agent
     user_id = get_current_user(request, response)
-    result = resume_agent(user_id, data.approved)
+    result = resume_agent(user_id, data.approved, data.session_id)
     return result
-
 
 
 
