@@ -10,7 +10,7 @@ from limit.rate_limiter import check_roadmap_limit, mark_roadmap_generated
 
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-3.5-flash",
     google_api_key=GEMINI_API_KEY
 )
 
