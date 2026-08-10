@@ -1,12 +1,9 @@
-
 from langchain_google_genai import ChatGoogleGenerativeAI
 from database.chromadb import get_collection
 from database.postgres import get_connection
 from config import GEMINI_API_KEY
 import json
 from functools import lru_cache
-from limit.rate_limiter import  check_daily_limit
-
 
 @lru_cache(maxsize=1)
 def get_llm():
@@ -40,29 +37,62 @@ def get_chunks_by_topic(user_id: int, topic: str):
         return []
     return results["documents"][0]
 
+def get_titles_for_documents(user_id: int, document_ids: list):
+    """look up filenames for given document ids, scoped to this user"""
+    if not document_ids:
+        return []
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT title FROM documents WHERE user_id = %s AND id = ANY(%s)",
+        (user_id, document_ids)
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [row[0] for row in rows]
+
+def get_chunks_by_documents(user_id: int, document_ids: list):
+    """get chunks belonging only to the selected documents"""
+    titles = get_titles_for_documents(user_id, document_ids)
+    if not titles:
+        return []
+    collection = get_collection(str(user_id))
+    results = collection.get(
+        where={"filename": {"$in": titles}}
+    )
+    return results["documents"] if results["documents"] else []
+
+def _get_content_sample(user_id: int, topic: str = None, document_ids: list = None, char_limit: int = 3000, fallback_limit: int = 10):
+    """shared logic: prefer document_ids, then topic, then all documents"""
+    if document_ids:
+        docs = get_chunks_by_documents(user_id, document_ids)
+        if not docs:
+            return None, "No content found for selected documents"
+        return " ".join(docs)[:char_limit], None
+    elif topic:
+        docs = get_chunks_by_topic(user_id, topic)
+        if not docs:
+            return None, f"No content found for topic: {topic}"
+        return " ".join(docs)[:char_limit], None
+    else:
+        collection = get_collection(str(user_id))
+        all_docs = collection.get()
+        if not all_docs["documents"]:
+            return None, "No documents found. Upload something first."
+        return " ".join(all_docs["documents"][:fallback_limit])[:char_limit], None
 
 
 def generate_quiz(
     user_id: int,
     num_questions: int = 5,
     difficulty: str = "medium",
-    topic: str = None
+    topic: str = None,
+    document_ids: list = None
 ):
-    allowed, remaining, limit = check_daily_limit(user_id, "quiz")
-    if not allowed:
-        return {"error": f"Daily quiz limit reached ({limit}/day). Upgrade to Pro for unlimited."}
-    
-    if topic:
-        docs = get_chunks_by_topic(user_id, topic)
-        if not docs:
-            return {"error": f"No content found for topic: {topic}"}
-        sample = " ".join(docs)[:3000]
-    else:
-        collection = get_collection(str(user_id))
-        all_docs = collection.get()
-        if not all_docs["documents"]:
-            return {"error": "No documents found. Upload something first."}
-        sample = " ".join(all_docs["documents"][:10])[:3000]
+    sample, error = _get_content_sample(user_id, topic, document_ids)
+    if error:
+        return {"error": error}
 
     difficulty_guide = {
         "easy": "definition and recall based — what is X, who invented Y",
@@ -150,8 +180,6 @@ def get_score_history(user_id: int):
         for r in rows
     ]
 
-
-
 def get_weak_topics(user_id: int):
     """find topics where user consistently scores below 60%"""
     conn = get_connection()
@@ -180,19 +208,10 @@ def get_weak_topics(user_id: int):
         for r in rows
     ]
 
-
-
-def generate_flashcards(user_id: int, topic: str = None, count: int = 10):
-    if topic:
-        docs = get_chunks_by_topic(user_id, topic)
-        sample = " ".join(docs)[:3000] if docs else ""
-    else:
-        collection = get_collection(str(user_id))
-        all_docs = collection.get()
-        sample = " ".join(all_docs["documents"][:10])[:3000] if all_docs["documents"] else ""
-
-    if not sample:
-        return {"error": "No content found"}
+def generate_flashcards(user_id: int, topic: str = None, count: int = 10, document_ids: list = None):
+    sample, error = _get_content_sample(user_id, topic, document_ids)
+    if error:
+        return {"error": error}
 
     prompt = f"""Generate {count} flashcards from this content.
 Return ONLY a JSON array in this exact format:
@@ -219,17 +238,10 @@ Return only the JSON array, nothing else."""
         return {"error": f"Could not generate flashcards: {str(e)}"}
 
 
-def generate_summary(user_id: int, topic: str = None):
-    if topic:
-        docs = get_chunks_by_topic(user_id, topic)
-        sample = " ".join(docs)[:3000] if docs else ""
-    else:
-        collection = get_collection(str(user_id))
-        all_docs = collection.get()
-        sample = " ".join(all_docs["documents"][:10])[:3000] if all_docs["documents"] else ""
-
-    if not sample:
-        return {"error": "No content found"}
+def generate_summary(user_id: int, topic: str = None, document_ids: list = None):
+    sample, error = _get_content_sample(user_id, topic, document_ids)
+    if error:
+        return {"error": error}
 
     prompt = f"""Summarise this content in exactly this format:
 
@@ -250,7 +262,7 @@ Content:
 {sample}"""
 
     try:
-        response =get_llm().invoke(prompt)
+        response = get_llm().invoke(prompt)
         return {
             "summary": response.content.strip(),
             "topic": topic or "all"
@@ -259,18 +271,10 @@ Content:
         return {"error": str(e)}
 
 
-
-def generate_interview_question(user_id: int, topic: str = None):
-    if topic:
-        docs = get_chunks_by_topic(user_id, topic)
-        sample = " ".join(docs)[:2000] if docs else ""
-    else:
-        collection = get_collection(str(user_id))
-        all_docs = collection.get()
-        sample = " ".join(all_docs["documents"][:5])[:2000] if all_docs["documents"] else ""
-
-    if not sample:
-        return {"error": "No content found"}
+def generate_interview_question(user_id: int, topic: str = None, document_ids: list = None):
+    sample, error = _get_content_sample(user_id, topic, document_ids, char_limit=2000, fallback_limit=5)
+    if error:
+        return {"error": error}
 
     prompt = f"""Generate one technical interview question from this content.
 The question should be open ended and require explanation.
@@ -288,7 +292,7 @@ Content:
 Return only the JSON, nothing else."""
 
     try:
-        response =get_llm().invoke(prompt)
+        response = get_llm().invoke(prompt)
         text = response.content.strip()
         text = text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
@@ -315,7 +319,7 @@ Return ONLY a JSON object:
 Return only the JSON, nothing else."""
 
     try:
-        response =get_llm().invoke(prompt)
+        response = get_llm().invoke(prompt)
         text = response.content.strip()
         text = text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
