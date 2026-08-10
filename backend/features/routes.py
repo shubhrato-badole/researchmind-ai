@@ -14,8 +14,6 @@ from features.study_mode import (
     generate_interview_question,
     evaluate_interview_answer
 )
-# from features.voice_query import transcribe_voice
-# from features.evaluation import evaluate_rag
 from agent.graph import run_agent
 
 router = APIRouter(
@@ -28,6 +26,7 @@ class QuizRequest(BaseModel):
     num_questions: int = 5
     difficulty: str = "medium"
     topic: Optional[str] = None
+    document_ids: Optional[list] = None
 
 class AnswerRequest(BaseModel):
     selected: int
@@ -43,7 +42,7 @@ class ScoreRequest(BaseModel):
 @router.post("/quiz")
 def get_quiz(data: QuizRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_quiz(user_id, data.num_questions, data.difficulty, data.topic)
+    return generate_quiz(user_id, data.num_questions, data.difficulty, data.topic, data.document_ids)
 
 @router.post("/quiz/check")
 def check_quiz_answer(data: AnswerRequest):
@@ -65,12 +64,11 @@ def weak_topics(request: Request, response: Response):
     return {"weak_topics": get_weak_topics(user_id)}
 
 
-
 @router.get("/topics")
 def topics(
     request: Request,
     response: Response,
-    document_ids: str = None  
+    document_ids: str = None
 ):
     from database import get_connection
     user_id = get_current_user(request, response)
@@ -90,41 +88,48 @@ def topics(
         conn.close()
         return {"topics": [r[0] for r in rows]}
 
-    
     return {"topics": get_user_topics(user_id)}
 
 
 class FlashcardRequest(BaseModel):
     topic: Optional[str] = None
     count: int = 10
+    document_ids: Optional[list] = None
 
 @router.post("/flashcards")
 def flashcards(data: FlashcardRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_flashcards(user_id, data.topic, data.count)
-
+    return generate_flashcards(user_id, data.topic, data.count, data.document_ids)
 
 
 class SummaryRequest(BaseModel):
     topic: Optional[str] = None
+    document_ids: Optional[list] = None
 
 @router.post("/summary")
 def summary(data: SummaryRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_summary(user_id, data.topic)
-
+    return generate_summary(user_id, data.topic, data.document_ids)
 
 
 class InterviewRequest(BaseModel):
     topic: Optional[str] = None
-
+    document_ids: Optional[list] = None
 
 @router.post("/interview/question")
 def interview_question(data: InterviewRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_interview_question(user_id, data.topic)
+    return generate_interview_question(user_id, data.topic, data.document_ids)
 
 
+class EvaluateRequest(BaseModel):
+    question: str
+    answer: str
+    key_points: list
+
+@router.post("/interview/evaluate")
+def interview_evaluate(data: EvaluateRequest, request: Request, response: Response):
+    return evaluate_interview_answer(data.question, data.answer, data.key_points)
 
 # @router.post("/voice")
 # async def voice_search(
