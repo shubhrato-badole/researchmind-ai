@@ -17,7 +17,7 @@ from functools import lru_cache
 @lru_cache(maxsize=1)
 def get_llm():
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
+        model="gemini-3.5-flash",
         google_api_key=GEMINI_API_KEY
 )
 
