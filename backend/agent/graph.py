@@ -170,7 +170,7 @@ def run_agent(query: str, user_id: int, search_web: bool = False , session_id: O
     }
 
 
-def resume_agent(user_id: int, approved: bool , session_id: Optional[int] = None):
+def resume_agent(user_id: int, approved: bool, session_id: Optional[int] = None):
     from agent.tools import get_tools
     """resume after human approval"""
     config = {"configurable": {"thread_id": str(user_id)}}
@@ -185,7 +185,7 @@ def resume_agent(user_id: int, approved: bool , session_id: Optional[int] = None
         state = current_agent.get_state(config)
         answer = state.values["messages"][-1].content
 
-    save_message(user_id, "assistant", answer   , session_id)
+    save_message(user_id, "assistant", answer, session_id)
 
     return {
         "status": "complete",
