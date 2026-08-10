@@ -15,45 +15,43 @@ llm = ChatGoogleGenerativeAI(
 )
 
 
-def generate_roadmap(goal:str, user_id:int , current_knowledge:str):
+def generate_roadmap(goal: str, user_id: int, current_knowledge: str):
     allowed, days_left = check_roadmap_limit(user_id)
     if not allowed:
         return {"error": f"You've used your free roadmap. Come back in {days_left} days or upgrade to Pro."}
 
+    prompt = f""" Create a personalised learning roadmap
 
-    prompt= f""" Create a personilised learning roadmap
-
-
-    Gola:{goal}
+    Goal: {goal}
     Current knowledge: {current_knowledge}
 
-    Analyze the gap between current knowledge and goal
-     Generate 6-8 steps to bridge that gap_skip what they already know
-      
-       
-        Return only a JSON object:
-        {{
-        "goal":"goal text"
-        "estimated_total_days":30,
-        "steps":[
-        "step_number:1,
-        "title":"topic name,
-        "estimated_dyas:3,
-        "why_needed": "how this bridges the gap",
-        "search_query": "best query to find resources for this step"
-        
+    Analyze the gap between current knowledge and goal.
+    Generate 6-8 steps to bridge that gap — skip what they already know.
+
+    Return only a JSON object:
+    {{
+        "goal": "goal text",
+        "estimated_total_days": 30,
+        "steps": [
+            {{
+                "step_number": 1,
+                "title": "topic name",
+                "description": "what this step covers and why",
+                "estimated_days": 3,
+                "why_needed": "how this bridges the gap",
+                "search_query": "best query to find resources for this step"
+            }}
         ]
-        }}
-        
-        
-        Return only the JSON, nothing else."""
-    
+    }}
+
+    Return only the JSON, nothing else."""
+
     try:
         response = llm.invoke(prompt)
-        text= response.content.strip()
-        text=text.replace("```json", "").replace("```", "").strip()
+        text = response.content.strip()
+        text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
-         
+
         conn = get_connection()
         cur = conn.cursor()
 
@@ -79,13 +77,13 @@ def generate_roadmap(goal:str, user_id:int , current_knowledge:str):
         cur.close()
         conn.close()
         mark_roadmap_generated(user_id)
+
         return {
             "roadmap_id": roadmap_id,
             "goal": goal,
             "estimated_total_days": data["estimated_total_days"],
             "steps": data["steps"]
         }
-    
 
     except Exception as e:
         return {"error": str(e)}
