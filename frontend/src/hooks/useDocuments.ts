@@ -10,7 +10,7 @@ export function useDocuments() {
   const { data: documents = [], isLoading } = useQuery({
     queryKey: ['documents'],
     queryFn: async () => {
-      const res = await client.get('/documents')
+      const res = await client.get('/ingest/')
       return res.data.documents as DocumentItem[]
     }
   })
