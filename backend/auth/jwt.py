@@ -68,7 +68,8 @@ def get_current_user(request: Request, response: Response):
         value=new_access_token,
         httponly=True,
         max_age=1800,
-        samesite="lax"
+        samesite="none",
+        secure=True
     )
 
     return user_id
