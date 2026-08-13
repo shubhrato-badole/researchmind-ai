@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Send, Mic, Brain } from 'lucide-react'
 import Layout from '../Components/Layout'
 import client from '../Api/client'
 import { useSessions } from '../hooks/useSessions'
+import { useDocuments } from '../hooks/useDocuments'
 import { useVoiceInput } from '../hooks/useVoiceInput'
 import { useAuth } from '../context/AuthContext'
 import SearchModeDropdown, { type SearchMode } from '../Components/SearchModeDropdown'
@@ -27,6 +29,7 @@ export default function Chat() {
   const [searchParams, setSearchParams] = useSearchParams()
   const currentSessionId = searchParams.get('session') ? Number(searchParams.get('session')) : null
   const { addSessionOptimistic } = useSessions()
+  const { documents } = useDocuments()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,30 +40,44 @@ export default function Chat() {
   const handleVoiceResult = useCallback((text: string) => setInput(text), [])
   const { listening, supported: micSupported, toggle: toggleMic } = useVoiceInput(handleVoiceResult)
 
+  // Fix #1: cached history load, instant on repeat visits
+  const { data: historyData } = useQuery({
+    queryKey: ['chat-history', currentSessionId],
+    queryFn: async () => {
+      const res = await client.get(`/chat/history?session_id=${currentSessionId}`)
+      return res.data.history.map((msg: any) => ({ role: msg.role, content: msg.message })) as Message[]
+    },
+    enabled: !!currentSessionId,
+    placeholderData: (prev) => prev
+  })
+
   useEffect(() => {
-    if (currentSessionId) {
-      loadSession(currentSessionId)
-    } else {
+    if (currentSessionId && historyData) {
+      setMessages(historyData)
+    } else if (!currentSessionId) {
       setMessages([])
     }
-  }, [currentSessionId])
+  }, [currentSessionId, historyData])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const loadSession = async (sessionId: number) => {
-    try {
-      const res = await client.get(`/chat/history?session_id=${sessionId}`)
-      const history = res.data.history.map((msg: any) => ({ role: msg.role, content: msg.message }))
-      setMessages(history)
-    } catch { }
-  }
-
   const sendMessage = async () => {
     if ((!input.trim() && !pendingFile) || loading) return
 
     const query = input.trim()
+
+    // Fix #3: check documents exist before docs/docs_web search
+    if ((searchMode === 'docs' || searchMode === 'docs_web') && documents.length === 0 && !pendingFile) {
+      setMessages(prev => [...prev,
+        { role: 'user', content: query },
+        { role: 'assistant', content: "You haven't uploaded any documents yet. Add a PDF, website, or YouTube link first, or switch to Web only mode." }
+      ])
+      setInput('')
+      return
+    }
+
     setInput('')
     setLoading(true)
 
@@ -80,22 +97,63 @@ export default function Chat() {
       }
 
       if (query) {
-        const res = await client.post('/chat/', {
-          query,
-          search_mode: searchMode,
-          session_id: currentSessionId
-        })
-        const data = res.data
+        // Fix #4: stream only in web-only mode (never pauses for approval)
+        if (searchMode === 'web') {
+          setMessages(prev => [...prev, { role: 'assistant', content: '' }])
 
-        if (!currentSessionId && data.session_id) {
-          setSearchParams({ session: String(data.session_id) })
-          addSessionOptimistic({ id: data.session_id, title: query.slice(0, 40), created_at: new Date().toISOString() })
-        }
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/chat/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              query,
+              search_mode: searchMode,
+              session_id: currentSessionId,
+              stream: true
+            })
+          })
 
-        if (data.status === 'awaiting_approval') {
-          setMessages(prev => [...prev, { role: 'assistant', content: data.message, awaiting_approval: true, thread_id: data.thread_id }])
+          if (!response.body) throw new Error('No stream body')
+
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let fullText = ''
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            fullText += decoder.decode(value, { stream: true })
+            setMessages(prev => {
+              const updated = [...prev]
+              updated[updated.length - 1] = { role: 'assistant', content: fullText }
+              return updated
+            })
+          }
+
+          if (!currentSessionId) {
+            // session_id isn't known ahead of time in streaming mode;
+            // refetch sessions list so the new one appears in the sidebar
+            addSessionOptimistic({ id: Date.now(), title: query.slice(0, 40), created_at: new Date().toISOString() })
+          }
         } else {
-          setMessages(prev => [...prev, { role: 'assistant', content: data.answer }])
+          const res = await client.post('/chat/', {
+            query,
+            search_mode: searchMode,
+            session_id: currentSessionId
+          })
+          const data = res.data
+
+          if (!currentSessionId && data.session_id) {
+            setSearchParams({ session: String(data.session_id) })
+            addSessionOptimistic({ id: data.session_id, title: query.slice(0, 40), created_at: new Date().toISOString() })
+          }
+
+          if (data.status === 'awaiting_approval') {
+            setMessages(prev => [...prev, { role: 'assistant', content: data.message, awaiting_approval: true, thread_id: data.thread_id }])
+          } else if (data.answer && data.answer.trim()) {
+            // Fix #5: never render an empty assistant bubble
+            setMessages(prev => [...prev, { role: 'assistant', content: data.answer }])
+          }
         }
       } else {
         setMessages(prev => [...prev, {
@@ -114,7 +172,11 @@ export default function Chat() {
     setLoading(true)
     try {
       const res = await client.post('/chat/resume', { thread_id: threadId, approved, session_id: currentSessionId })
-      setMessages(prev => [...prev.filter(m => !m.awaiting_approval), { role: 'assistant', content: res.data.answer }])
+      if (res.data.answer && res.data.answer.trim()) {
+        setMessages(prev => [...prev.filter(m => !m.awaiting_approval), { role: 'assistant', content: res.data.answer }])
+      } else {
+        setMessages(prev => prev.filter(m => !m.awaiting_approval))
+      }
     } finally {
       setLoading(false)
     }
@@ -184,8 +246,8 @@ export default function Chat() {
                   </div>
                 )}
                 <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap min-w-0 ${msg.role === 'user'
-                  ? 'bg-[#534AB7] text-white rounded-br-sm'
-                  : 'bg-[#1c1c1e] text-white border border-[#3a3a3c] rounded-bl-sm'
+                    ? 'bg-[#534AB7] text-white rounded-br-sm'
+                    : 'bg-[#1c1c1e] text-white border border-[#3a3a3c] rounded-bl-sm'
                   }`}>
                   {msg.content}
                 </div>
