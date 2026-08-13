@@ -3,7 +3,7 @@ from database.postgres import get_connection
 from database.redis_client import get_redis
 
 
-FREE_LIMIT = {
+FREE_LIMITS= {
     "doc_search": 10,
     "web_search": 10,
     "quiz": 2,
@@ -23,23 +23,22 @@ def get_user_plan(user_id):
 
 
 
-def check_daily_limit(user_id:int , feature:str):
+def check_daily_limit(user_id: int, feature: str):
     plan = get_user_plan(user_id)
     if plan == "pro":
         return True, None, None
 
-    limit = FREE_LIMIT.get(feature, 0)
-    r= get_redis()
-    key = f"user:{user_id}:usage:{feature}:{date.today().isoformat()}"
-    usage = r.get(key)
+    limit = FREE_LIMITS[feature]
+    r = get_redis()
+    key = f"usage:{user_id}:{feature}:{date.today()}"
+    current = int(r.get(key) or 0)
 
-
-    if usage >= limit:
-        return False, limit-int(usage), limit
+    if current >= limit:
+        return False, 0, limit
 
     r.incr(key)
-    r.expire(key, 86400) 
-    return True, limit-int(usage)-1, limit
+    r.expire(key, 86400)
+    return True, limit - current - 1, limit
    
 def check_roadmap_limit(user_id: int):
     plan = get_user_plan(user_id)
