@@ -172,8 +172,8 @@ export default function Chat() {
           )}
 
           {messages.map((msg, i) => (
-            <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`flex items-start gap-2 max-w-[75%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div key={i} className={`flex flex-col min-w-0 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`flex items-start gap-2 max-w-[75%] min-w-0 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 {msg.role === 'assistant' ? (
                   <div className="w-7 h-7 rounded-lg bg-[#534AB7] flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Brain size={14} color="white" />
@@ -183,9 +183,9 @@ export default function Chat() {
                     {userInitial}
                   </div>
                 )}
-                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                    ? 'bg-[#534AB7] text-white rounded-br-sm'
-                    : 'bg-[#1c1c1e] text-white border border-[#3a3a3c] rounded-bl-sm'
+                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap min-w-0 ${msg.role === 'user'
+                  ? 'bg-[#534AB7] text-white rounded-br-sm'
+                  : 'bg-[#1c1c1e] text-white border border-[#3a3a3c] rounded-bl-sm'
                   }`}>
                   {msg.content}
                 </div>
