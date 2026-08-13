@@ -7,12 +7,12 @@ def get_tools(user_id: int):
     def search_documents(query: str) -> str:
         """Search the user's private knowledge base.
         Use this first for any question."""
-        from retrieval.multi_query import multi_query_search
+        from retrieval.hybrid_search import hybrid_search
         from features.trust_score import get_trust_score
 
         for attempt in range(3):
             try:
-                results = multi_query_search(query, user_id)
+                results = hybrid_search(query, user_id)
                 if results:
                     for r in results:
                         r["trust_score"] = get_trust_score(r.get("metadata", {}))
@@ -60,7 +60,8 @@ def get_tools(user_id: int):
                         url = r["metadata"].get("source_url", "")
                         response += f"\n[web: {url}]\n{r['content']}\n"
                     return response
-            except Exception:
+            except Exception as e:
+                print(f"Web search error: {e}")
                 continue
 
         return "NO_RESULTS"
