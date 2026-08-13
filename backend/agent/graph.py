@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, MessagesState, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from agent.memory import (
     get_chat_history,
     save_message,
@@ -148,9 +148,17 @@ def _build_messages(compressed, query, system_prompt):
         if msg["role"] == "user":
             messages.append(HumanMessage(content=msg["message"]))
         else:
-            messages.append({"role": msg["role"], "content": msg["message"]})
+            messages.append(AIMessage(content=msg["message"]))
     messages.append(HumanMessage(content=query))
     return messages
+
+
+def _ensure_str(content) -> str:
+    """defensive guard — LLM content should always be a string, but
+    tool-call responses can sometimes surface as dicts/lists"""
+    if isinstance(content, str):
+        return content
+    return str(content)
 
 
 def run_agent(query: str, user_id: int, search_mode: str = "docs_web", session_id: Optional[int] = None):
@@ -178,7 +186,7 @@ def run_agent(query: str, user_id: int, search_mode: str = "docs_web", session_i
             "thread_id": str(user_id)
         }
 
-    final_answer = result["messages"][-1].content
+    final_answer = _ensure_str(result["messages"][-1].content)
 
     save_message(user_id, "user", query, session_id)
     save_message(user_id, "assistant", final_answer, session_id)
@@ -204,6 +212,8 @@ def resume_agent(user_id: int, approved: bool, session_id: Optional[int] = None)
     else:
         state = current_agent.get_state(config)
         answer = state.values["messages"][-1].content
+
+    answer = _ensure_str(answer)
 
     save_message(user_id, "assistant", answer, session_id)
 
@@ -242,8 +252,9 @@ def stream_agent(query: str, user_id: int, search_mode: str = "docs_web", sessio
                 and msg.content
                 and metadata.get("langgraph_node") == "agent"
             ):
-                full_answer += msg.content
-                yield msg.content
+                content = _ensure_str(msg.content)
+                full_answer += content
+                yield content
 
     save_message(user_id, "user", query, session_id)
     save_message(user_id, "assistant", full_answer, session_id)
