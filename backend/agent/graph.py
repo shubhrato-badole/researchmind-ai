@@ -154,12 +154,20 @@ def _build_messages(compressed, query, system_prompt):
 
 
 def _ensure_str(content) -> str:
-    """defensive guard — LLM content should always be a string, but
-    tool-call responses can sometimes surface as dicts/lists"""
+    """extract clean text from LLM content, handling both plain strings
+    and structured content blocks (list of dicts with 'type'/'text')"""
     if isinstance(content, str):
         return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+            elif isinstance(block, str):
+                parts.append(block)
+        if parts:
+            return "".join(parts)
     return str(content)
-
 
 def run_agent(query: str, user_id: int, search_mode: str = "docs_web", session_id: Optional[int] = None):
     tools = get_tools_for_mode(user_id, search_mode)
