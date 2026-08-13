@@ -24,6 +24,15 @@ def get_llm():
 checkpointer = MemorySaver()
 
 
+def get_thread_id(user_id: int, session_id: Optional[int]) -> str:
+    """scope the LangGraph thread to the specific chat session, not just
+    the user, so switching sessions or search modes doesn't reuse stale
+    graph state built for a different tool configuration"""
+    if session_id:
+        return f"{user_id}:{session_id}"
+    return str(user_id)
+
+
 def get_tools_for_mode(user_id: int, search_mode: str):
     """
     web        -> web tool only, no approval needed, searches web directly
@@ -39,7 +48,6 @@ def get_tools_for_mode(user_id: int, search_mode: str):
 
 
 def route_tools(state):
-    """Decide which tool node to go to based on the tool the LLM chose."""
     last_message = state["messages"][-1]
     tool_calls = getattr(last_message, "tool_calls", None)
     if not tool_calls:
@@ -52,12 +60,6 @@ def route_tools(state):
 
 
 def build_agent(tools, ask_before_web: bool = False):
-    """Build the agent graph.
-    search_documents always auto-executes.
-    search_internet pauses for approval only when ask_before_web is True
-    (i.e. docs or docs_web modes) — web-only mode never pauses since the
-    user already explicitly chose to search the web."""
-
     has_doc_tool = tools[0].name == "search_documents"
     doc_tool = tools[0] if has_doc_tool else None
     web_tool = tools[0] if not has_doc_tool else (tools[1] if len(tools) > 1 else None)
@@ -91,7 +93,6 @@ def build_agent(tools, ask_before_web: bool = False):
 
 
 def compress_history(history: list, max_tokens: int = 3000):
-    """keep only recent messages that fit within token budget"""
     total_chars = max_tokens * 4
     compressed = []
     current_chars = 0
@@ -154,8 +155,6 @@ def _build_messages(compressed, query, system_prompt):
 
 
 def _ensure_str(content) -> str:
-    """extract clean text from LLM content, handling both plain strings
-    and structured content blocks (list of dicts with 'type'/'text')"""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -165,9 +164,9 @@ def _ensure_str(content) -> str:
                 parts.append(block.get("text", ""))
             elif isinstance(block, str):
                 parts.append(block)
-        if parts:
-            return "".join(parts)
+        return "".join(parts)
     return str(content)
+
 
 def run_agent(query: str, user_id: int, search_mode: str = "docs_web", session_id: Optional[int] = None):
     tools = get_tools_for_mode(user_id, search_mode)
@@ -182,7 +181,8 @@ def run_agent(query: str, user_id: int, search_mode: str = "docs_web", session_i
 
     current_agent = build_agent(tools, ask_before_web)
 
-    config = {"configurable": {"thread_id": str(user_id)}}
+    thread_id = get_thread_id(user_id, session_id)
+    config = {"configurable": {"thread_id": thread_id}}
 
     result = current_agent.invoke({"messages": messages}, config=config)
 
@@ -191,13 +191,14 @@ def run_agent(query: str, user_id: int, search_mode: str = "docs_web", session_i
         return {
             "status": "awaiting_approval",
             "message": "I found limited info in your documents. Should I also search the web?",
-            "thread_id": str(user_id)
+            "thread_id": thread_id
         }
 
     final_answer = _ensure_str(result["messages"][-1].content)
 
-    save_message(user_id, "user", query, session_id)
-    save_message(user_id, "assistant", final_answer, session_id)
+    if final_answer.strip():
+        save_message(user_id, "user", query, session_id)
+        save_message(user_id, "assistant", final_answer, session_id)
 
     return {
         "status": "complete",
@@ -207,12 +208,11 @@ def run_agent(query: str, user_id: int, search_mode: str = "docs_web", session_i
 
 def resume_agent(user_id: int, approved: bool, session_id: Optional[int] = None):
     from agent.tools import get_tools
-    """resume after human approval — always had both tools since only
-    docs/docs_web modes ever reach the approval pause"""
-    config = {"configurable": {"thread_id": str(user_id)}}
-
     tools = get_tools(user_id)
     current_agent = build_agent(tools, ask_before_web=True)
+
+    thread_id = get_thread_id(user_id, session_id)
+    config = {"configurable": {"thread_id": thread_id}}
 
     if approved:
         result = current_agent.invoke(None, config=config)
@@ -223,7 +223,8 @@ def resume_agent(user_id: int, approved: bool, session_id: Optional[int] = None)
 
     answer = _ensure_str(answer)
 
-    save_message(user_id, "assistant", answer, session_id)
+    if answer.strip():
+        save_message(user_id, "assistant", answer, session_id)
 
     return {
         "status": "complete",
@@ -244,7 +245,8 @@ def stream_agent(query: str, user_id: int, search_mode: str = "docs_web", sessio
 
     current_agent = build_agent(tools, ask_before_web)
 
-    config = {"configurable": {"thread_id": str(user_id)}}
+    thread_id = get_thread_id(user_id, session_id)
+    config = {"configurable": {"thread_id": thread_id}}
 
     full_answer = ""
 
@@ -264,5 +266,6 @@ def stream_agent(query: str, user_id: int, search_mode: str = "docs_web", sessio
                 full_answer += content
                 yield content
 
-    save_message(user_id, "user", query, session_id)
-    save_message(user_id, "assistant", full_answer, session_id)
+    if full_answer.strip():
+        save_message(user_id, "user", query, session_id)
+        save_message(user_id, "assistant", full_answer, session_id)
