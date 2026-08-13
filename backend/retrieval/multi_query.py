@@ -1,6 +1,5 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from retrieval.hybrid_search import hybrid_search
-# from retrieval.reranker import rerank
 from config import GEMINI_API_KEY
 from functools import lru_cache
 
@@ -25,10 +24,9 @@ Question: {query}"""
         return queries[:3]
     except:
         return []
-    
+
 def multi_query_search(query: str, user_id: int):
-   
-    variants = generate_queries(query)   
+    variants = generate_queries(query)
     all_queries = [query] + variants
     all_chunks = {}
 
@@ -44,6 +42,4 @@ def multi_query_search(query: str, user_id: int):
 
     if not all_chunks:
         return []
-    
-    combined = list(all_chunks.values())
-    return combined
+    return list(all_chunks.values())
