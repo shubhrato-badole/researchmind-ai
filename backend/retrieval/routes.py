@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Response, HTTPException, Depends
 from pydantic import BaseModel
 from auth.jwt import get_current_user
 from limit.rate_limiter import check_daily_limit
-from retrieval.multi_query_search import multi_query_search
+from retrieval.multi_query import multi_query_search
 
 
 router = APIRouter(
