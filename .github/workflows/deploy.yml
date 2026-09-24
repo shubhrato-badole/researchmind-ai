@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  PYTHON_VERSION: "3.14"  
+  PYTHON_VERSION: "3.14"   # adjust to match your actual Python version
   NODE_VERSION: "20"
   BACKEND_IMAGE: ghcr.io/${{ github.repository }}-backend
   FRONTEND_IMAGE: ghcr.io/${{ github.repository }}-frontend
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend   
+        working-directory: backend   # adjust if your backend folder is named differently
     steps:
       - uses: actions/checkout@v4
 
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend   
+        working-directory: frontend   # adjust if your frontend folder is named differently
     steps:
       - uses: actions/checkout@v4
 
@@ -63,7 +63,7 @@ jobs:
       - name: Build
         run: npm run build
 
-  build-and-push:
+  build-scan-push:
     needs: [backend-checks, frontend-checks]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -80,30 +80,56 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push backend image
+      - name: Build backend image (local only, not pushed yet)
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-            ${{ env.BACKEND_IMAGE }}:latest
+          push: false
+          load: true
+          tags: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
-      - name: Build & push frontend image
+      - name: Scan backend image (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Build frontend image (local only, not pushed yet)
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-            ${{ env.FRONTEND_IMAGE }}:latest
+          push: false
+          load: true
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+      - name: Scan frontend image (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Push backend image
+        run: |
+          docker push ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          docker tag ${{ env.BACKEND_IMAGE }}:${{ github.sha }} ${{ env.BACKEND_IMAGE }}:latest
+          docker push ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Push frontend image
+        run: |
+          docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          docker tag ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} ${{ env.FRONTEND_IMAGE }}:latest
+          docker push ${{ env.FRONTEND_IMAGE }}:latest
 
   deploy:
-    needs: build-and-push
+    needs: build-scan-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to EC2
+      - name: Deploy with version tracking + automatic rollback
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -111,25 +137,65 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_SSH_PORT || 22 }}
           script: |
-            cd ~/researchmind-ai   # adjust to your actual project directory on the EC2 host
+            set -e
+            cd ~/researchmind-ai   # adjust to your actual project directory on EC2
+
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Save current version as previous, before deploying the new one
+            if [ -f .current_version ]; then
+              cp .current_version .previous_version
+            fi
+
+            NEW_VERSION=${{ github.sha }}
+            echo "$NEW_VERSION" > .current_version
+
+            export IMAGE_TAG=$NEW_VERSION
             docker compose pull
             docker compose up -d
             docker image prune -f
+
+            # Check the new version is actually healthy
+            HEALTHY=false
+            for i in $(seq 1 10); do
+              if curl -sf http://localhost:8000/health/ready; then
+                HEALTHY=true
+                break
+              fi
+              echo "Waiting for service..."
+              sleep 10
+            done
+
+            if [ "$HEALTHY" = false ]; then
+              echo "New version unhealthy — rolling back"
+              if [ -f .previous_version ]; then
+                PREV=$(cat .previous_version)
+                export IMAGE_TAG=$PREV
+                docker compose pull
+                docker compose up -d
+                echo "$PREV" > .current_version
+                echo "Rolled back to $PREV"
+              else
+                echo "No previous version available to roll back to"
+              fi
+              exit 1
+            fi
+
+            echo "Deploy successful: $NEW_VERSION"
 
   health-check:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for service to be healthy
+      - name: Confirm service is healthy from outside
         run: |
-          for i in {1..10}; do
-            if curl -sf https://YOUR-DOMAIN-OR-IP/health; then
+          for i in {1..5}; do
+            if curl -sf https://YOUR-DOMAIN-OR-IP/health/ready; then
               echo "Service is healthy"
               exit 0
             fi
             echo "Waiting for service..."
             sleep 10
           done
-          echo "Health check failed after deploy"
+          echo "External health check failed"
           exit 1
