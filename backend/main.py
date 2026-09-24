@@ -43,6 +43,9 @@ from features.routes import router as features_router
 print("Importing roadmap router")
 from roadmap.routes import router as roadmap_router
 from payment.routes import router as payment_router
+from fastapi.responses import JSONResponse
+import psycopg2
+import redis
 
 print("Finished all imports")
 
@@ -127,3 +130,28 @@ def health():
     return {
         "status": "healthy",
     }
+
+
+@app.get("/health/ready")
+def health_ready():
+    checks = {"postgres": False, "redis": False}
+
+    try:
+        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+        checks["postgres"] = True
+    except Exception:
+        checks["postgres"] = False
+
+    try:
+        r = redis.from_url(os.getenv("REDIS_URL"))
+        r.ping()
+        checks["redis"] = True
+    except Exception:
+        checks["redis"] = False
+
+    ready = all(checks.values())
+    return JSONResponse(status_code=200 if ready else 503, content={"ready": ready, **checks})
