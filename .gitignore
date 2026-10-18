@@ -25,3 +25,6 @@ chroma_db/
 
 # Uploads
 uploads/
+
+# keep the example env templates
+!.env.example
