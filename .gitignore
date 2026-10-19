@@ -25,3 +25,14 @@ chroma_db/
 
 # Uploads
 uploads/
+
+# keep the example env templates
+!.env.example
+
+# macOS and backup files
+.DS_Store
+*.bak
+*.backup
+
+# LangSmith exports (may contain prompts and answers from your account)
+backend/evaluation/results/langsmith_export/
