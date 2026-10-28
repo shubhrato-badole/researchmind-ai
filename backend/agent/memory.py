@@ -31,10 +31,16 @@ def get_sessions(user_id: int):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
-        """SELECT id, title, created_at FROM chat_sessions
-           WHERE user_id = %s
-           ORDER BY created_at DESC
-           LIMIT 20""",
+        """SELECT s.id, s.title, s.created_at
+           FROM chat_sessions AS s
+           WHERE s.user_id = %s
+             AND EXISTS (
+                 SELECT 1
+                 FROM chat_history AS h
+                 WHERE h.session_id = s.id AND h.user_id = s.user_id
+             )
+           ORDER BY s.created_at DESC
+           LIMIT 100""",
         (user_id,)
     )
     rows = cur.fetchall()

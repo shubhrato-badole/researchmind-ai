@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Request, Response, Depends
+from fastapi import APIRouter, Request, Response, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
+import logging
 from auth.jwt import get_current_user
 from database.postgres import get_connection
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/chat",
@@ -55,9 +58,27 @@ def chat(data: ChatRequest, request: Request, response: Response):
 
     if data.stream:
         def generate():
-            for token in stream_agent(data.query, user_id, data.search_mode, session_id):
-                yield token
-        return StreamingResponse(generate(), media_type="text/plain")
+            try:
+                yield from stream_agent(
+                    data.query,
+                    user_id,
+                    data.search_mode,
+                    session_id,
+                )
+            except Exception:
+                # Streaming headers have already been sent, so return a readable
+                # message rather than abruptly closing the response body.
+                logger.exception("Streaming chat generation failed")
+                yield "\n\n⚠️ The response was interrupted while generating. Please try again."
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     result = run_agent(data.query, user_id, data.search_mode, session_id)
     result["session_id"] = session_id
@@ -90,17 +111,35 @@ def delete_session(
     request: Request,
     response: Response
 ):
+    """Delete one owned chat and its messages, even if legacy FK cascade is absent."""
     user_id = get_current_user(request, response)
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM chat_sessions WHERE id = %s AND user_id = %s",
-        (session_id, user_id)
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-    return {"message": "Session deleted"}
+    try:
+        # Explicit child-row delete supports databases created before ON DELETE CASCADE.
+        cur.execute(
+            "DELETE FROM chat_history WHERE session_id = %s AND user_id = %s",
+            (session_id, user_id)
+        )
+        cur.execute(
+            "DELETE FROM chat_sessions WHERE id = %s AND user_id = %s RETURNING id",
+            (session_id, user_id)
+        )
+        deleted = cur.fetchone()
+        if deleted is None:
+            conn.rollback()
+            raise HTTPException(status_code=404, detail="Chat not found")
+        conn.commit()
+        return {"message": "Session deleted", "session_id": session_id}
+    except HTTPException:
+        raise
+    except Exception:
+        conn.rollback()
+        logger.exception("Failed to delete chat session %s for user %s", session_id, user_id)
+        raise HTTPException(status_code=500, detail="Could not delete chat. Please try again.")
+    finally:
+        cur.close()
+        conn.close()
 
 
 @router.delete("/history")

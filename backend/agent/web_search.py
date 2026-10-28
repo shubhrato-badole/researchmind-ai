@@ -1,23 +1,46 @@
-from duckduckgo_search import DDGS
+
+import logging
+
+from ddgs import DDGS
+
+logger = logging.getLogger(__name__)
+
 
 def search_web(query: str):
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=5))
+        with DDGS(timeout=15) as ddgs:
+         results = list(
+             ddgs.text(
+               query,
+               region="in-en",
+               max_results=5,
+               backend="auto",
+           )
+        )
 
-        if not results:
-            return []
-
+        logger.info("Web search returned %d results", len(results))
+        logger.warning(
+              "WEB_SEARCH_QUERY=%r WEB_SEARCH_SOURCES=%s",
+               query,
+            [
+                result.get("href")
+                for result in results
+                if result.get("body") and result.get("href")
+            ],
+)
         return [
             {
-                "content": r["body"],
+                "content": result.get("body", ""),
                 "metadata": {
                     "source_type": "web",
-                    "source_url": r["href"],
-                    "filename": r["title"]
-                }
+                    "source_url": result.get("href", ""),
+                    "filename": result.get("title", "Unknown"),
+                },
             }
-            for r in results
+            for result in results
+            if result.get("body") and result.get("href")
         ]
-    except Exception as e:
+
+    except Exception:
+        logger.exception("Web search failed")
         return []
