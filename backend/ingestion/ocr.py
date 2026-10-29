@@ -6,7 +6,7 @@ import tempfile
 import os
 
 
-def ingest_image(file_bytes:bytes ,filename: str, user_id : int):
+def ingest_image(file_bytes:bytes ,filename: str, user_id : int ,content_hash: str | None = None):
     with tempfile.NamedTemporaryFile(delete=False , suffix=".png") as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -20,4 +20,4 @@ def ingest_image(file_bytes:bytes ,filename: str, user_id : int):
         return {"message": "No text found in image", "chunks": 0}
 
     docs = [Document(page_content=text, metadata={"source": filename})]
-    return process_and_store(docs, filename, "ocr", None, user_id)
+    return process_and_store(docs, filename, "ocr", None, user_id, content_hash=content_hash)

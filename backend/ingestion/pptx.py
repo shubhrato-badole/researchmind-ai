@@ -4,7 +4,7 @@ from pptx import Presentation
 import tempfile
 import os
 
-def ingest_pptx(file_bytes: bytes, filename: str, user_id: int):
+def ingest_pptx(file_bytes: bytes, filename: str, user_id: int, content_hash: str | None = None):
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp:
             tmp.write(file_bytes)
@@ -26,7 +26,7 @@ def ingest_pptx(file_bytes: bytes, filename: str, user_id: int):
             return {"message": "No text found in presentation", "chunks": 0}
 
         docs = [Document(page_content=full_text, metadata={"source": filename})]
-        return process_and_store(docs, filename, "pptx", None, user_id)
+        return process_and_store(docs, filename, "pptx", None, user_id, content_hash=content_hash)
 
     except Exception as e:
         return {"message": f"Error: {str(e)}", "chunks": 0}

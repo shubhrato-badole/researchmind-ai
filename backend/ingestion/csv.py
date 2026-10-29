@@ -3,7 +3,7 @@ from ingestion.utils import process_and_store
 import tempfile
 import os
 
-def ingest_csv(file_bytes: bytes, filename: str, user_id: int):
+def ingest_csv(file_bytes: bytes, filename: str, user_id: int ,content_hash: str | None = None):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -12,4 +12,4 @@ def ingest_csv(file_bytes: bytes, filename: str, user_id: int):
     docs = loader.load()
     os.unlink(tmp_path)
 
-    return process_and_store(docs, filename, "csv", None, user_id)
+    return process_and_store(docs, filename, "csv", None, user_id, content_hash=content_hash)

@@ -1,7 +1,7 @@
 authlib==1.7.2
 bcrypt
 chromadb
-duckduckgo_search==8.1.1
+ddgs
 fastapi==0.139.0
 google-generativeai
 httpx==0.28.1
@@ -27,3 +27,7 @@ uvicorn
 boto3==1.43.61
 razorpay==1.4.2
 setuptools
+pypdf
+sentence-transformers
+
+docx2txt
