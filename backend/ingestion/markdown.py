@@ -1,14 +1,14 @@
 from langchain_core.documents import Document
 from ingestion.utils import process_and_store
 
-def ingest_markdown(file_bytes: bytes, filename: str, user_id: int):
+def ingest_markdown(file_bytes: bytes, filename: str, user_id: int ,content_hash: str | None = None):
     try:
         text = file_bytes.decode("utf-8")
         if not text.strip():
             return {"message": "Empty file", "chunks": 0}
 
         docs = [Document(page_content=text, metadata={"source": filename})]
-        return process_and_store(docs, filename, "markdown", None, user_id)
+        return process_and_store(docs, filename, "markdown", None, user_id, content_hash=content_hash)
 
     except Exception as e:
         return {"message": f"Error: {str(e)}", "chunks": 0}
