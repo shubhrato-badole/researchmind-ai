@@ -12,6 +12,34 @@ def get_llm():
         google_api_key=GEMINI_API_KEY
     )
 
+
+def _response_text(response) -> str:
+    """Handle both string and block-based LangChain model responses."""
+    content = getattr(response, "content", response)
+
+    if isinstance(content, str):
+        return content.strip()
+
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                value = block.get("text")
+                if isinstance(value, str):
+                    parts.append(value)
+            elif isinstance(getattr(block, "text", None), str):
+                parts.append(block.text)
+
+        result = "\\n".join(part for part in parts if part).strip()
+        if result:
+            return result
+
+    raise ValueError(
+        f"Unexpected LLM response content type: {type(content).__name__}"
+    )
+
 def get_user_topics(user_id: int):
     """get all topics extracted from user's documents"""
     conn = get_connection()
@@ -63,11 +91,33 @@ def get_chunks_by_documents(user_id: int, document_ids: list):
     )
     return results["documents"] if results["documents"] else []
 
+def get_chunks_by_documents_and_topic(user_id: int, document_ids: list, topic: str):
+    """Retrieve chunks relevant to a topic, restricted to selected documents."""
+    titles = get_titles_for_documents(user_id, document_ids)
+    if not titles:
+        return []
+
+    collection = get_collection(str(user_id))
+    results = collection.query(
+        query_texts=[topic],
+        n_results=10,
+        where={"filename": {"$in": titles}},
+    )
+    documents = results.get("documents") or []
+    return documents[0] if documents and documents[0] else []
+
+
 def _get_content_sample(user_id: int, topic: str = None, document_ids: list = None, char_limit: int = 3000, fallback_limit: int = 10):
     """shared logic: prefer document_ids, then topic, then all documents"""
     if document_ids:
-        docs = get_chunks_by_documents(user_id, document_ids)
+        docs = (
+            get_chunks_by_documents_and_topic(user_id, document_ids, topic)
+            if topic
+            else get_chunks_by_documents(user_id, document_ids)
+        )
         if not docs:
+            if topic:
+                return None, f"No content found for topic '{topic}' in the selected documents"
             return None, "No content found for selected documents"
         return " ".join(docs)[:char_limit], None
     elif topic:
@@ -124,7 +174,7 @@ Return only the JSON array, nothing else."""
 
     try:
         response = get_llm().invoke(prompt)
-        text = response.content.strip()
+        text = _response_text(response)
         text = text.replace("```json", "").replace("```", "").strip()
         questions = json.loads(text)
         return {
@@ -143,19 +193,31 @@ def check_answer(selected: int, correct: int, explanation: str):
         "message": "Correct!" if is_correct else f"Wrong. {explanation}"
     }
 
-def save_score(user_id: int, score: int, total: int, topic: str, difficulty: str):
+def save_score(user_id: int, score: int, total: int, topic: str, difficulty: str,
+              roadmap_id: int = None, step_number: int = None):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute(
-        """INSERT INTO quiz_scores (user_id, topic, score, total, difficulty)
-           VALUES (%s, %s, %s, %s, %s)""",
-        (user_id, topic or "all", score, total, difficulty)
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-    return {"message": "Score saved"}
-
+    try:
+        cur.execute(
+            "INSERT INTO quiz_scores (user_id, topic, score, total, difficulty) VALUES (%s, %s, %s, %s, %s)",
+            (user_id, topic or "all", score, total, difficulty),
+        )
+        # A score of at least 80% unlocks only the linked in-progress step owned by this user.
+        if roadmap_id is not None and step_number is not None and total > 0 and score / total >= 0.8:
+            cur.execute(
+                "UPDATE roadmap_steps AS rs SET quiz_passed = TRUE "
+                "WHERE rs.roadmap_id = %s AND rs.step_number = %s AND rs.status = 'in_progress' "
+                "AND EXISTS (SELECT 1 FROM roadmaps AS r WHERE r.id = rs.roadmap_id AND r.user_id = %s)",
+                (roadmap_id, step_number, user_id),
+            )
+        conn.commit()
+        return {"message": "Score saved"}
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
 def get_score_history(user_id: int):
     conn = get_connection()
     cur = conn.cursor()
@@ -230,7 +292,7 @@ Return only the JSON array, nothing else."""
 
     try:
         response = get_llm().invoke(prompt)
-        text = response.content.strip()
+        text = _response_text(response)
         text = text.replace("```json", "").replace("```", "").strip()
         cards = json.loads(text)
         return {"flashcards": cards, "topic": topic or "all"}
@@ -264,7 +326,7 @@ Content:
     try:
         response = get_llm().invoke(prompt)
         return {
-            "summary": response.content.strip(),
+            "summary": _response_text(response),
             "topic": topic or "all"
         }
     except Exception as e:
@@ -293,7 +355,7 @@ Return only the JSON, nothing else."""
 
     try:
         response = get_llm().invoke(prompt)
-        text = response.content.strip()
+        text = _response_text(response)
         text = text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
     except Exception as e:
@@ -320,7 +382,7 @@ Return only the JSON, nothing else."""
 
     try:
         response = get_llm().invoke(prompt)
-        text = response.content.strip()
+        text = _response_text(response)
         text = text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
     except Exception as e:
