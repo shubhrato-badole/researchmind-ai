@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Response, Depends, UploadFile, File
+from fastapi import APIRouter, Request, Response, Depends, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from auth.jwt import get_current_user
@@ -22,6 +22,12 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)]
 )
 
+
+def _unwrap_feature_result(result):
+    if isinstance(result, dict) and isinstance(result.get("error"), str):
+        raise HTTPException(status_code=422, detail=result["error"])
+    return result
+
 class QuizRequest(BaseModel):
     num_questions: int = 5
     difficulty: str = "medium"
@@ -38,11 +44,13 @@ class ScoreRequest(BaseModel):
     total: int
     topic: Optional[str] = None
     difficulty: str = "medium"
+    roadmap_id: Optional[int] = None
+    step_number: Optional[int] = None
 
 @router.post("/quiz")
 def get_quiz(data: QuizRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_quiz(user_id, data.num_questions, data.difficulty, data.topic, data.document_ids)
+    return _unwrap_feature_result(generate_quiz(user_id, data.num_questions, data.difficulty, data.topic, data.document_ids))
 
 @router.post("/quiz/check")
 def check_quiz_answer(data: AnswerRequest):
@@ -51,7 +59,10 @@ def check_quiz_answer(data: AnswerRequest):
 @router.post("/quiz/score")
 def submit_score(data: ScoreRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return save_score(user_id, data.score, data.total, data.topic, data.difficulty)
+    return save_score(
+        user_id, data.score, data.total, data.topic, data.difficulty,
+        roadmap_id=data.roadmap_id, step_number=data.step_number,
+    )
 
 @router.get("/quiz/history")
 def quiz_history(request: Request, response: Response):
@@ -70,7 +81,7 @@ def topics(
     response: Response,
     document_ids: str = None
 ):
-    from database import get_connection
+    from database.postgres import get_connection
     user_id = get_current_user(request, response)
 
     if document_ids:
@@ -99,7 +110,7 @@ class FlashcardRequest(BaseModel):
 @router.post("/flashcards")
 def flashcards(data: FlashcardRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_flashcards(user_id, data.topic, data.count, data.document_ids)
+    return _unwrap_feature_result(generate_flashcards(user_id, data.topic, data.count, data.document_ids))
 
 
 class SummaryRequest(BaseModel):
@@ -109,7 +120,7 @@ class SummaryRequest(BaseModel):
 @router.post("/summary")
 def summary(data: SummaryRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_summary(user_id, data.topic, data.document_ids)
+    return _unwrap_feature_result(generate_summary(user_id, data.topic, data.document_ids))
 
 
 class InterviewRequest(BaseModel):
@@ -119,7 +130,7 @@ class InterviewRequest(BaseModel):
 @router.post("/interview/question")
 def interview_question(data: InterviewRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
-    return generate_interview_question(user_id, data.topic, data.document_ids)
+    return _unwrap_feature_result(generate_interview_question(user_id, data.topic, data.document_ids))
 
 
 class EvaluateRequest(BaseModel):
@@ -129,7 +140,7 @@ class EvaluateRequest(BaseModel):
 
 @router.post("/interview/evaluate")
 def interview_evaluate(data: EvaluateRequest, request: Request, response: Response):
-    return evaluate_interview_answer(data.question, data.answer, data.key_points)
+    return _unwrap_feature_result(evaluate_interview_answer(data.question, data.answer, data.key_points))
 
 # @router.post("/voice")
 # async def voice_search(
