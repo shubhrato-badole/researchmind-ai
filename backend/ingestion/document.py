@@ -3,7 +3,7 @@ from ingestion.utils import process_and_store
 import tempfile
 import os
 
-def ingest_word(file_bytes: bytes, filename: str, user_id: int):
+def ingest_word(file_bytes: bytes, filename: str, user_id: int , content_hash: str | None = None):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -12,9 +12,9 @@ def ingest_word(file_bytes: bytes, filename: str, user_id: int):
     docs = loader.load()
     os.unlink(tmp_path)
 
-    return process_and_store(docs, filename, "word", None, user_id)
+    return process_and_store(docs, filename, "word", None, user_id, content_hash=content_hash)
 
-def ingest_text(file_bytes: bytes, filename: str, user_id: int):
+def ingest_text(file_bytes: bytes, filename: str, user_id: int, content_hash: str | None = None):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -23,4 +23,4 @@ def ingest_text(file_bytes: bytes, filename: str, user_id: int):
     docs = loader.load()
     os.unlink(tmp_path)
 
-    return process_and_store(docs, filename, "text", None, user_id)
+    return process_and_store(docs, filename, "text", None, user_id, content_hash=content_hash)
