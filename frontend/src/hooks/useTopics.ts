@@ -8,7 +8,7 @@ export function useTopics(documentIds: number[]) {
       const res = await client.get('/features/topics', {
         params: { document_ids: documentIds.join(',') }
       })
-      return res.data.topics as string[]
+      return Array.isArray(res.data?.topics) ? (res.data.topics as string[]) : []
     },
     enabled: documentIds.length > 0
   })
