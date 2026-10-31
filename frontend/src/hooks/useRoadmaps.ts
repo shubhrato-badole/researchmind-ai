@@ -15,7 +15,7 @@ export function useRoadmaps() {
     queryKey: ['roadmaps'],
     queryFn: async () => {
       const res = await client.get('/roadmap/')
-      return res.data.roadmaps as Roadmap[]
+      return Array.isArray(res.data?.roadmaps) ? (res.data.roadmaps as Roadmap[]) : []
     }
   })
 

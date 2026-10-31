@@ -1,32 +1,34 @@
 import { useRef } from 'react'
-import { Plus, X, FileText, Image } from 'lucide-react'
+import { Plus, Paperclip } from 'lucide-react'
 
-interface PendingFile {
+export interface PendingFile {
   file: File
   preview: string
   type: string
 }
 
 export default function AddContentMenu({
-  pendingFile,
-  onFileSelected,
-  onRemove
+  onFilesSelected,
+  disabled = false,
+  selectedCount = 0,
 }: {
-  pendingFile: PendingFile | null
-  onFileSelected: (file: PendingFile) => void
-  onRemove: () => void
+  onFilesSelected: (files: PendingFile[]) => void
+  disabled?: boolean
+  selectedCount?: number
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = Array.from(event.currentTarget.files ?? []) as File[]
+    if (!fileList.length) return
 
-    const type = file.type.startsWith('image') ? 'image' : 'document'
-    const preview = file.name
-
-    onFileSelected({ file, preview, type })
-    e.target.value = ''
+    const selected = fileList.map((file) => ({
+      file,
+      preview: file.name,
+      type: file.type.startsWith('image/') ? 'image' : 'document',
+    }))
+    onFilesSelected(selected)
+    event.target.value = ''
   }
 
   return (
@@ -34,32 +36,26 @@ export default function AddContentMenu({
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept=".pdf,.docx,.txt,.csv,.png,.jpg,.jpeg,.pptx,.md"
         className="hidden"
         onChange={handleFileChange}
       />
-
-      {pendingFile ? (
-     
-        <div className="flex items-center gap-1.5 bg-[#1e1b4b] border border-[#534AB7] text-[#7C75D4] rounded-lg px-2.5 py-1.5 text-xs flex-shrink-0">
-          {pendingFile.type === 'image'
-            ? <Image size={12} />
-            : <FileText size={12} />
-          }
-          <span className="max-w-[100px] truncate">{pendingFile.preview}</span>
-          <button onClick={onRemove} className="hover:text-white transition-colors">
-            <X size={12} />
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-8 h-8 rounded-full border border-[#3a3a3c] flex items-center justify-center text-[#666] hover:text-white transition-colors flex-shrink-0"
-          aria-label="Add file"
-        >
-          <Plus size={16} />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={disabled}
+        title={selectedCount ? `Add files (${selectedCount} selected)` : 'Attach files'}
+        aria-label="Attach files"
+        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#3a3a3c] text-[#999] transition-colors hover:border-[#534AB7] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {selectedCount > 0 ? <Paperclip size={17} /> : <Plus size={17} />}
+        {selectedCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#7C75D4] px-1 text-[9px] font-semibold text-white">
+            {selectedCount}
+          </span>
+        )}
+      </button>
     </>
   )
 }

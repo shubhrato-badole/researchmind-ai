@@ -7,7 +7,9 @@ from roadmap.roadmap import (
     start_step,
     complete_step,
     get_progress,
-    get_user_roadmaps
+    get_user_roadmaps,
+    generate_step_quiz,
+    set_subtopic_completed
 )
 
 router = APIRouter(
@@ -29,6 +31,10 @@ class CompleteStepRequest(BaseModel):
     step_number: int
     quiz_passed: bool
 
+
+class SubtopicCompletionRequest(BaseModel):
+    completed: bool
+
 @router.post("/")
 def create_roadmap(data: RoadmapRequest, request: Request, response: Response):
     user_id = get_current_user(request, response)
@@ -45,8 +51,28 @@ def start_roadmap_step(data: StepRequest, request: Request, response: Response):
     return start_step(data.roadmap_id, data.step_number, user_id)
 
 @router.post("/complete-step")
-def complete_roadmap_step(data: CompleteStepRequest):
-    return complete_step(data.roadmap_id, data.step_number, data.quiz_passed)
+def complete_roadmap_step(data: CompleteStepRequest, request: Request, response: Response):
+    user_id = get_current_user(request, response)
+    return complete_step(data.roadmap_id, data.step_number, data.quiz_passed, user_id)
+
+@router.patch("/{roadmap_id}/steps/{step_number}/subtopics/{subtopic_id}")
+def update_roadmap_subtopic(
+    roadmap_id: int,
+    step_number: int,
+    subtopic_id: int,
+    data: SubtopicCompletionRequest,
+    request: Request,
+    response: Response,
+):
+    user_id = get_current_user(request, response)
+    return set_subtopic_completed(roadmap_id, step_number, subtopic_id, data.completed, user_id)
+
+
+@router.post("/{roadmap_id}/steps/{step_number}/quiz")
+def roadmap_step_quiz(roadmap_id: int, step_number: int, request: Request, response: Response):
+    user_id = get_current_user(request, response)
+    return generate_step_quiz(roadmap_id, step_number, user_id)
+
 
 @router.get("/{roadmap_id}/progress")
 def roadmap_progress(roadmap_id: int, request: Request, response: Response):

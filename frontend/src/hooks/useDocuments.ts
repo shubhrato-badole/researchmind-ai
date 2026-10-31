@@ -11,7 +11,7 @@ export function useDocuments() {
     queryKey: ['documents'],
     queryFn: async () => {
       const res = await client.get('/ingest/')
-      return res.data.documents as DocumentItem[]
+      return Array.isArray(res.data?.documents) ? (res.data.documents as DocumentItem[]) : []
     }
   })
   return { documents, isLoading }
