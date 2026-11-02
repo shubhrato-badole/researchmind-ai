@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Optional
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage , ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
@@ -107,6 +107,25 @@ def _current_turn_has_empty_document_search(messages: list) -> bool:
 
     return False
 
+def _current_turn_declined_web_search(messages: list) -> bool:
+    last_user_index = None
+
+    for index in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[index], HumanMessage):
+            last_user_index = index
+            break
+
+    if last_user_index is None:
+        return False
+
+    return any(
+        getattr(message, "name", None) == "search_internet"
+        and _ensure_str(getattr(message, "content", "")).startswith(
+            "WEB_SEARCH_DECLINED:"
+        )
+        for message in messages[last_user_index + 1:]
+    )
+
 
 def route_tools(state):
     """Route the agent to the tool requested by its latest message."""
@@ -164,6 +183,20 @@ def build_agent(tools, ask_before_web: bool = False):
 
         # If document search returned no results during this turn,
         # keep the normal agent response flow but disable multi-query.
+        if _current_turn_declined_web_search(messages):
+            available_tools = [
+                tool for tool in tools
+                if tool.name != "search_internet"
+            ]
+
+            model = (
+                get_llm().bind_tools(available_tools)
+                if available_tools
+                else get_llm()
+            )
+
+            return {"messages": [model.invoke(messages)]}
+    
         if _current_turn_has_empty_document_search(messages):
             available_tools = [
                 tool for tool in tools
@@ -462,14 +495,63 @@ def resume_agent(
     thread_id = get_thread_id(user_id, session_id)
     config = {"configurable": {"thread_id": thread_id}}
 
+    state = current_agent.get_state(config)
+    messages = list(state.values.get("messages", []))
+
+    pending_user_message = next(
+        (
+            message for message in reversed(messages)
+            if isinstance(message, HumanMessage)
+        ),
+        None,
+    )
+
     if approved:
         result = current_agent.invoke(None, config=config)
-        answer = result["messages"][-1].content
-    else:
-        state = current_agent.get_state(config)
-        answer = state.values["messages"][-1].content
+        answer = _ensure_str(result["messages"][-1].content)
 
-    answer = _ensure_str(answer)
+    else:
+        last_message = messages[-1] if messages else None
+
+        web_call = next(
+            (
+                call for call in getattr(last_message, "tool_calls", [])
+                if call.get("name") == "search_internet"
+            ),
+            None,
+        )
+
+        if web_call is None:
+            raise ValueError("No pending web-search approval was found.")
+
+        current_agent.update_state(
+            config,
+            {
+                "messages": [
+                    ToolMessage(
+                        content=(
+                            "WEB_SEARCH_DECLINED: The user declined web search. "
+                            "Answer using only the available document evidence. "
+                            "Do not attempt web search."
+                        ),
+                        tool_call_id=web_call["id"],
+                        name="search_internet",
+                    )
+                ]
+            },
+            as_node="search_internet",
+        )
+
+        result = current_agent.invoke(None, config=config)
+        answer = _ensure_str(result["messages"][-1].content)
+
+    if pending_user_message:
+        save_message(
+            user_id,
+            "user",
+            _ensure_str(pending_user_message.content),
+            session_id,
+        )
 
     if answer.strip():
         save_message(user_id, "assistant", answer, session_id)
