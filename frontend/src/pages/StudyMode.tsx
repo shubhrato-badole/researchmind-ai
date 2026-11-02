@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Zap, Layers, FileText, Briefcase, ChevronRight, RotateCcw, Check, X, Upload } from 'lucide-react'
 import Layout from '../Components/Layout'
 import client from '../Api/client'
@@ -28,14 +28,52 @@ interface Flashcard {
 }
 
 export default function StudyMode() {
+  const [searchParams] = useSearchParams()
   const { documents, isLoading: docsLoading } = useDocuments()
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([])
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
   const { topics } = useTopics(selectedDocIds)
 
-  useEffect(() => {
+    useEffect(() => {
     setSelectedTopic(null)
   }, [selectedDocIds])
+
+  // Clear generated Study Mode content when selection changes.
+  useEffect(() => {
+    setActionError('')
+    setQuestions([])
+    setFlashcards([])
+    setSummary('')
+    setInterviewQuestion(null)
+    setInterviewAnswer('')
+    setInterviewFeedback(null)
+    setCurrentQ(0)
+    setSelected(null)
+    setChecked(false)
+    setScore(0)
+    setQuizDone(false)
+    setFlipped(false)
+    setCurrentCard(0)
+  }, [selectedDocIds, selectedTopic])
+
+
+  useEffect(() => {
+    setQuestions([])
+    setFlashcards([])
+    setSummary('')
+    setInterviewQuestion(null)
+    setInterviewAnswer('')
+    setInterviewFeedback(null)
+
+    setCurrentQ(0)
+    setSelected(null)
+    setChecked(false)
+    setScore(0)
+    setQuizDone(false)
+
+    setFlipped(false)
+    setCurrentCard(0)
+  }, [selectedDocIds, selectedTopic])
 
   const [activeTab, setActiveTab] = useState<Tab>('quiz')
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
@@ -56,39 +94,108 @@ export default function StudyMode() {
   const [submittingScore, setSubmittingScore] = useState(false)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
   const [limitMessage, setLimitMessage] = useState('')
+  const [actionError, setActionError] = useState('')
+  const roadmapQuizId = searchParams.get('roadmapId')
+  const roadmapStepNumber = searchParams.get('stepNumber')
+  const isRoadmapQuiz = Boolean(roadmapQuizId && roadmapStepNumber)
   const hasSelection = selectedDocIds.length > 0
+
+  const readStudyResponse = (response: any, fallback: string) => {
+    const data = response?.data
+    if (!data || typeof data !== 'object') {
+      throw new Error(fallback)
+    }
+    if (typeof data.error === 'string' && data.error.trim()) {
+      throw new Error(data.error)
+    }
+    return data
+  }
+
+  
+  const reportStudyError = (err: any, fallback: string) => {
+    const status = err?.response?.status
+    const detail =
+      err?.response?.data?.detail ??
+      err?.response?.data?.error
+
+    const rawMessage =
+      typeof detail === 'string'
+        ? detail
+        : typeof err?.message === 'string'
+          ? err.message
+          : ''
+
+    const quotaExceeded =
+      /RESOURCE_EXHAUSTED|GenerateRequestsPerDay|quota exceeded|exceeded your current quota/i.test(
+        rawMessage
+      )
+
+    if (quotaExceeded) {
+      setActionError(
+        'AI generation is temporarily unavailable because the Gemini API quota has been reached. Please retry after the quota resets or check your Google AI Studio usage and billing settings.'
+      )
+      return
+    }
+
+    if (status === 429) {
+      setLimitMessage(rawMessage || fallback)
+      setLimitModalOpen(true)
+    } else {
+      setActionError(rawMessage || fallback)
+    }
+  }
+
 
   const generateQuiz = async () => {
     setLoading(true)
+    setActionError('')
     setQuestions([])
     setCurrentQ(0)
     setScore(0)
     setQuizDone(false)
     setSelected(null)
     setChecked(false)
+
     try {
-      const res = await client.post('/features/quiz', {
-        num_questions: 5,
-        difficulty,
-        document_ids: selectedDocIds,
-        topic: selectedTopic
-      })
-      setQuestions(res.data.questions)
-    } catch (err: any) {
-      if (err.response?.status === 429) {
-        setLimitMessage(err.response.data.detail)
-        setLimitModalOpen(true)
+      const res = isRoadmapQuiz
+        ? await client.post(`/roadmap/${roadmapQuizId}/steps/${roadmapStepNumber}/quiz`)
+        : await client.post('/features/quiz', {
+            num_questions: 5,
+            difficulty,
+            document_ids: selectedDocIds,
+            topic: selectedTopic
+          })
+      const data = readStudyResponse(res, 'The server returned an invalid quiz response.')
+      if (!Array.isArray(data.questions)) {
+        throw new Error('The quiz response did not contain a questions list. Please try again.')
       }
+      const validQuestions: Question[] = data.questions
+        .filter((item: any) => item && typeof item.question === 'string' && Array.isArray(item.options))
+        .map((item: any): Question => ({
+          question: item.question,
+          options: item.options.map((option: unknown) => String(option)),
+          correct: Number(item.correct),
+          explanation: typeof item.explanation === 'string' ? item.explanation : '',
+          topic: typeof item.topic === 'string' ? item.topic : (selectedTopic || 'General')
+        }))
+        .filter((item: Question) => item.options.length >= 2 && Number.isInteger(item.correct) && item.correct >= 0 && item.correct < item.options.length)
+      if (validQuestions.length === 0) {
+        throw new Error('No valid quiz questions were generated. Please try again.')
+      }
+      setQuestions(validQuestions)
+    } catch (err: any) {
+      reportStudyError(err, 'Failed to generate the quiz. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleAnswer = async (index: number) => {
-    if (checked) return
+  const handleAnswer = (index: number) => {
+    const question = questions[currentQ]
+    if (checked || !question) return
     setSelected(index)
     setChecked(true)
-    if (index === questions[currentQ].correct) {
+    if (index === question.correct) {
       setScore(s => s + 1)
     }
   }
@@ -96,15 +203,21 @@ export default function StudyMode() {
   const nextQuestion = async () => {
     if (currentQ + 1 >= questions.length) {
       setSubmittingScore(true)
+      setActionError('')
       try {
-        await client.post('/features/quiz/score', {
+        const res = await client.post('/features/quiz/score', {
           score,
           total: questions.length,
           document_ids: selectedDocIds,
           topic: selectedTopic,
-          difficulty
+          difficulty,
+          roadmap_id: searchParams.get('roadmapId') ? Number(searchParams.get('roadmapId')) : undefined,
+          step_number: searchParams.get('stepNumber') ? Number(searchParams.get('stepNumber')) : undefined
         })
+        readStudyResponse(res, 'The server returned an invalid score response.')
         setQuizDone(true)
+      } catch (err: any) {
+        reportStudyError(err, 'Could not save your quiz score. Please try again.')
       } finally {
         setSubmittingScore(false)
       }
@@ -117,6 +230,7 @@ export default function StudyMode() {
 
   const generateFlashcards = async () => {
     setLoading(true)
+    setActionError('')
     setFlashcards([])
     setCurrentCard(0)
     setFlipped(false)
@@ -126,7 +240,23 @@ export default function StudyMode() {
         topic: selectedTopic,
         count: 10
       })
-      setFlashcards(res.data.flashcards)
+      const data = readStudyResponse(res, 'The server returned an invalid flashcard response.')
+      if (!Array.isArray(data.flashcards)) {
+        throw new Error('The flashcard response did not contain a flashcards list. Please try again.')
+      }
+      const validCards: Flashcard[] = data.flashcards
+        .filter((item: any) => item && typeof item.front === 'string' && typeof item.back === 'string')
+        .map((item: any): Flashcard => ({
+          front: item.front,
+          back: item.back,
+          topic: typeof item.topic === 'string' ? item.topic : (selectedTopic || 'General')
+        }))
+      if (validCards.length === 0) {
+        throw new Error('No flashcards were generated. Check the selected document and try again.')
+      }
+      setFlashcards(validCards)
+    } catch (err: any) {
+      reportStudyError(err, 'Failed to generate flashcards. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -134,13 +264,20 @@ export default function StudyMode() {
 
   const generateSummary = async () => {
     setLoading(true)
+    setActionError('')
     setSummary('')
     try {
       const res = await client.post('/features/summary', {
         document_ids: selectedDocIds,
         topic: selectedTopic
       })
-      setSummary(res.data.summary)
+      const data = readStudyResponse(res, 'The server returned an invalid summary response.')
+      if (typeof data.summary !== 'string' || !data.summary.trim()) {
+        throw new Error('The server returned an empty summary. Please try again.')
+      }
+      setSummary(data.summary)
+    } catch (err: any) {
+      reportStudyError(err, 'Failed to generate the summary. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -148,6 +285,7 @@ export default function StudyMode() {
 
   const generateInterviewQuestion = async () => {
     setLoading(true)
+    setActionError('')
     setInterviewQuestion(null)
     setInterviewAnswer('')
     setInterviewFeedback(null)
@@ -156,7 +294,17 @@ export default function StudyMode() {
         document_ids: selectedDocIds,
         topic: selectedTopic
       })
-      setInterviewQuestion(res.data)
+      const data = readStudyResponse(res, 'The server returned an invalid interview question.')
+      if (typeof data.question !== 'string' || !data.question.trim()) {
+        throw new Error('No interview question was generated. Please try again.')
+      }
+      setInterviewQuestion({
+        ...data,
+        key_points: Array.isArray(data.key_points) ? data.key_points.filter((point: unknown) => typeof point === 'string') : [],
+        topic: typeof data.topic === 'string' ? data.topic : (selectedTopic || 'General')
+      })
+    } catch (err: any) {
+      reportStudyError(err, 'Failed to generate an interview question. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -165,13 +313,26 @@ export default function StudyMode() {
   const evaluateAnswer = async () => {
     if (!interviewAnswer.trim() || !interviewQuestion) return
     setLoading(true)
+    setActionError('')
+    setInterviewFeedback(null)
     try {
       const res = await client.post('/features/interview/evaluate', {
         question: interviewQuestion.question,
         answer: interviewAnswer,
-        key_points: interviewQuestion.key_points
+        key_points: Array.isArray(interviewQuestion.key_points) ? interviewQuestion.key_points : []
       })
-      setInterviewFeedback(res.data)
+      const data = readStudyResponse(res, 'The server returned invalid interview feedback.')
+      if (typeof data.score !== 'number' || typeof data.feedback !== 'string') {
+        throw new Error('The interview feedback was incomplete. Please submit your answer again.')
+      }
+      setInterviewFeedback({
+        ...data,
+        max_score: typeof data.max_score === 'number' ? data.max_score : 10,
+        covered_points: Array.isArray(data.covered_points) ? data.covered_points : [],
+        missed_points: Array.isArray(data.missed_points) ? data.missed_points : []
+      })
+    } catch (err: any) {
+      reportStudyError(err, 'Failed to evaluate your answer. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -195,9 +356,9 @@ export default function StudyMode() {
     <Layout>
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        <div className="px-5 py-3 border-b border-[#3a3a3c] bg-[#2d2d2f] flex-shrink-0">
+        <div className="px-3 sm:px-5 py-3 pl-14 md:pl-5 border-b border-[#3a3a3c] bg-[#2d2d2f] flex-shrink-0">
           <h1 className="text-sm font-semibold text-white mb-3">Study mode</h1>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {tabs.map(tab => {
               const Icon = tab.icon
               return (
@@ -216,7 +377,13 @@ export default function StudyMode() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 bg-[#2d2d2f]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 bg-[#2d2d2f]">
+          {actionError && (
+            <div role="alert" className="max-w-2xl mx-auto mb-4 flex items-start justify-between gap-3 rounded-xl border border-red-800 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+              <p className="whitespace-pre-wrap">{actionError}</p>
+              <button type="button" onClick={() => setActionError('')} className="shrink-0 text-red-200 hover:text-white" aria-label="Dismiss error">Dismiss</button>
+            </div>
+          )}
 
           {!docsLoading && documents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center max-w-2xl mx-auto">
@@ -286,7 +453,7 @@ export default function StudyMode() {
                       </div>
                       <h2 className="text-base font-semibold text-white">Ready to test yourself?</h2>
                       <p className="text-sm text-[#666] max-w-xs">AI generates questions from your selected documents</p>
-                      <Button onClick={generateQuiz} disabled={!hasSelection} className="px-8">
+                      <Button onClick={generateQuiz} disabled={!hasSelection && !isRoadmapQuiz} className="px-8">
                         Start quiz
                       </Button>
                     </div>
@@ -503,7 +670,7 @@ export default function StudyMode() {
                             </span>
                           </div>
                           <p className="text-sm text-[#ccc] leading-relaxed mb-4">{interviewFeedback.feedback}</p>
-                          <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                             <div className="bg-green-900/20 border border-green-800 rounded-xl p-3">
                               <p className="text-xs text-green-400 mb-1">Covered</p>
                               {interviewFeedback.covered_points?.map((p: string) => (

@@ -80,8 +80,8 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111111] flex items-center justify-center">
-      <div className="bg-[#1c1c1e] border border-[#2a2a2a] rounded-2xl p-9 w-full max-w-sm">
+    <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4 py-6">
+      <div className="w-full max-w-sm rounded-2xl border border-[#2a2a2a] bg-[#1c1c1e] p-5 sm:p-9">
 
 
         <div className="flex items-center gap-3 mb-7">

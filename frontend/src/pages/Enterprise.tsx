@@ -20,14 +20,14 @@ export default function Enterprise() {
     <div className="min-h-screen bg-[#2d2d2f] flex flex-col w-full">
 
    
-      <nav className="flex items-center justify-between sticky px-8 py-4 top-0 z-10 bg-[#2d2d2f] border-b border-[#3a3a3c]">
+      <nav className="flex flex-wrap items-center justify-between gap-3 sticky px-4 sm:px-8 py-4 top-0 z-10 bg-[#2d2d2f] border-b border-[#3a3a3c]">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 bg-[#534AB7] rounded-xl flex items-center justify-center">
             <Brain size={18} color="white" fill="white" />
           </div>
           <span className="font-semibold text-white text-lg">ResearchMind</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Link to="/" className="text-sm text-[#999] border border-[#555] px-4 py-2 rounded-lg hover:text-white hover:border-[#888] transition-colors">
             ← Back
           </Link>
@@ -38,13 +38,13 @@ export default function Enterprise() {
       </nav>
 
       
-       <div className="max-w-6xl mx-auto w-full px-8">
+       <div className="max-w-6xl mx-auto w-full px-4 sm:px-8">
       <section className="py-16 border-b border-[#3a3a3c]">
         <div className="max-w-4xl">
           <div className="inline-block text-xs font-medium px-3 py-1 rounded-full bg-[#1e1b4b] text-[#7C75D4] border border-[#534AB7] mb-4">
             Enterprise
           </div>
-          <h1 className="text-4xl font-semibold text-white leading-tight max-w-2xl mb-4">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-white leading-tight max-w-2xl mb-4">
             ResearchMind on your own server.<br />Your data never leaves.
           </h1>
           <p className="text-base text-[#999] max-w-xl leading-relaxed">
@@ -59,7 +59,7 @@ export default function Enterprise() {
         <h2 className="text-2xl font-semibold text-white mb-2">Your employees waste hours searching.<br />Your data cannot leave the building.</h2>
         <p className="text-sm text-[#999] max-w-2xl mb-8">Every company has thousands of documents — policies, case files, reports — that nobody can search properly. The answers exist. They just can't find them. And you can't send that data to ChatGPT.</p>
 
-        <div className="grid grid-cols-2 gap-4 w-full mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-6">
           {[
             {
               icon: Shield,
@@ -115,7 +115,7 @@ export default function Enterprise() {
 
       <section className="py-14 border-b border-[#3a3a3c]">
         <p className="text-lg font-bold text-white uppercase tracking-widest mb-6">Why self-hosted</p>
-        <div className="grid grid-cols-2 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
           {[
             { icon: Lock, title: '100% private', desc: 'Data never leaves your server. Not even to us. Runs fully on your own infrastructure.' },
             { icon: Building, title: 'For any industry', desc: 'Hospitals, law firms, banks, government — any organisation with confidential documents.' },
@@ -139,7 +139,7 @@ export default function Enterprise() {
       <section className="py-14 border-b border-[#3a3a3c]">
         <p className="text-xs font-medium text-[#666] uppercase tracking-widest mb-2">Built for these industries</p>
         <h2 className="text-2xl font-semibold text-white mb-8">Any industry with sensitive documents</h2>
-        <div className="grid grid-cols-3 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
           {[
             { icon: '🏥', title: 'Healthcare', desc: 'Search patient histories, drug interactions, and clinical guidelines — privately on your hospital server' },
             { icon: '⚖️', title: 'Legal', desc: 'Search across thousands of case files, contracts, and legal precedents instantly' },
@@ -173,7 +173,7 @@ export default function Enterprise() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Your name"
                   placeholder="Shubhrato Badole"
@@ -187,7 +187,7 @@ export default function Enterprise() {
                   onChange={e => setForm({ ...form, company: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Work email"
                   type="email"
@@ -229,7 +229,7 @@ export default function Enterprise() {
       </div>
 
       {/* Footer */}
-      <footer className="px-8 py-6 border-t border-[#3a3a3c] flex items-center justify-between mt-auto">
+      <footer className="px-4 sm:px-8 py-6 border-t border-[#3a3a3c] flex flex-wrap items-center justify-between gap-3 mt-auto">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-[#534AB7] rounded-md flex items-center justify-center">
             <Brain size={13} color="white" fill="white" />

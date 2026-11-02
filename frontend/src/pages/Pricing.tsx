@@ -26,15 +26,15 @@ export default function Pricing() {
 
   return (
     <Layout>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#3a3a3c] bg-[#2d2d2f] flex items-center justify-between flex-shrink-0">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
+        <div className="px-3 sm:px-5 py-3 pl-14 md:pl-5 border-b border-[#3a3a3c] bg-[#2d2d2f] flex items-center justify-between gap-2 flex-shrink-0">
           <h1 className="text-sm font-semibold text-white">Plans</h1>
           <button onClick={() => navigate(-1)} className="text-[#888] hover:text-white transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-[#2d2d2f]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 bg-[#2d2d2f]">
           <div className="text-center mb-6">
             <div className="w-12 h-12 bg-[#534AB7] rounded-xl flex items-center justify-center mx-auto mb-3">
               <Brain size={24} color="white" />
@@ -43,7 +43,7 @@ export default function Pricing() {
             <p className="text-xs text-[#888]">Start free, upgrade when you need more room to research</p>
           </div>
 
-          <div className="max-w-xl mx-auto grid grid-cols-2 gap-4">
+          <div className="max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             <div className="bg-[#1c1c1e] border border-[#2a2a2a] rounded-2xl p-6">
               <p className="text-white font-medium mb-1">Free</p>

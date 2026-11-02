@@ -4,41 +4,73 @@ export function useVoiceInput(onResult: (text: string) => void) {
   const [listening, setListening] = useState(false)
   const [supported, setSupported] = useState(true)
   const recognitionRef = useRef<any>(null)
+  const listeningRef = useRef(false)
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+
     if (!SpeechRecognition) {
       setSupported(false)
       return
     }
+
     const recognition = new SpeechRecognition()
-    recognition.continuous = false
+    recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = 'en-US'
 
     recognition.onresult = (event: any) => {
       const transcript = Array.from(event.results)
-        .map((r: any) => r[0].transcript)
+        .map((result: any) => result[0]?.transcript ?? '')
         .join('')
-      onResult(transcript)
+        .trim()
+      if (transcript) onResult(transcript)
     }
-    recognition.onend = () => setListening(false)
-    recognition.onerror = () => setListening(false)
+
+    recognition.onend = () => {
+      listeningRef.current = false
+      setListening(false)
+    }
+
+    recognition.onerror = () => {
+      listeningRef.current = false
+      setListening(false)
+    }
 
     recognitionRef.current = recognition
-    return () => recognition.stop()
+    return () => {
+      listeningRef.current = false
+      try { recognition.stop() } catch { /* already stopped */ }
+      recognitionRef.current = null
+    }
   }, [onResult])
 
-  const toggle = useCallback(() => {
-    if (!recognitionRef.current) return
-    if (listening) {
-      recognitionRef.current.stop()
-      setListening(false)
-    } else {
-      recognitionRef.current.start()
+  const start = useCallback(() => {
+    const recognition = recognitionRef.current
+    if (!recognition || listeningRef.current) return
+    try {
+      recognition.start()
+      listeningRef.current = true
       setListening(true)
+    } catch (error) {
+      // Browsers throw if recognition is already active; keep the UI stable.
+      console.warn('Could not start voice recognition:', error)
     }
-  }, [listening])
+  }, [])
 
-  return { listening, supported, toggle }
+  const stop = useCallback(() => {
+    const recognition = recognitionRef.current
+    if (!recognition || !listeningRef.current) return
+    listeningRef.current = false
+    setListening(false)
+    try { recognition.stop() } catch { /* already stopped */ }
+  }, [])
+
+  const toggle = useCallback(() => {
+    if (listeningRef.current) stop()
+    else start()
+  }, [start, stop])
+
+  return { listening, supported, start, stop, toggle }
 }

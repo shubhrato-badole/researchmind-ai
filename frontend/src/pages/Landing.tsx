@@ -8,14 +8,14 @@ export default function Landing() {
     return(
          <div className="min-h-screen bg-[#2d2d2f] flex flex-col w-full">
 
-        <nav className='flex items-center justify-between sticky px-8 pt-4 top-0 z-10 bg-[#2d2d2f] border-b border-[#3a3a3c]'>
-          <div className="flex items-center gap-3 mb-7">
+        <nav className='flex flex-wrap items-center justify-between gap-3 sticky px-4 sm:px-8 py-3 top-0 z-10 bg-[#2d2d2f] border-b border-[#3a3a3c]'>
+          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-0">
           <div className="w-11 h-11 bg-[#534AB7] rounded-xl flex items-center justify-center">
             <Brain size={20} color="white" />
           </div>
           <span className="text-lg font-semibold text-white">ResearchMind</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
          <Link to="/enterprise" className="text-sm text-[white] border border-[#555] px-4 py-2 rounded-lg hover:text-white hover:border-[#888] transition-colors">
       Enterprise
     </Link>
@@ -28,13 +28,13 @@ export default function Landing() {
         </div>
         </nav>
 
-        <div className="max-w-5xl mx-auto w-full px-8 flex flex-col">
+        <div className="max-w-5xl mx-auto w-full px-4 sm:px-8 flex flex-col">
  <section className='flex flex-col items-center text-center px-6 pt-20 pb-16" ' >
    <div className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-[#EEEDFE] text-[#3C3489] border border-[#AFA9EC] mb-6">
     <Brain size={16} color="#7C75D4" fill="#7C75D4" />
            AI-powered knowledge base
         </div>
-        <h1 className="text-4xl font-semibold text-white leading-tight max-w-xl mb-4">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-white leading-tight max-w-xl mb-4">
     Your documents.<br />
     <span className="text-[#534AB7]">Answered instantly.</span>
   </h1>
@@ -55,12 +55,12 @@ export default function Landing() {
      </section>
 
       <section className="py-16 border-b border-[#3a3a3c]">
-        <div className='ml-11'>
+        <div className='ml-0 sm:ml-11 mb-6'>
         <p className='text-xs font-medium text-[#666] uppercase tracking-widest mb-2'>How it works</p>
         <h2  className="text-xl font-semibold text-white mb-2">Three steps. That's it</h2>
          <p className="text-sm text-[#999] mb-8">No setup. No configuration. Just upload and start asking questions.</p>
          </div>
-<div className="grid grid-cols-3 gap-5 max-w-7xl mx-auto">
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 max-w-7xl mx-auto">
   {[
     { num: '1', title: 'Add your content', desc: 'Upload a PDF, paste a website URL, or drop a YouTube link. We handle the rest.' },
     { num: '2', title: 'Ask anything', desc: 'Type or speak your question. Search only your documents, or include the web too.' },
@@ -115,12 +115,12 @@ export default function Landing() {
 </section>
 
 
-<section className="px-12 py-12 border-t border-[#3a3a3c] w-full">
+<section className="px-0 sm:px-12 py-10 sm:py-12 border-t border-[#3a3a3c] w-full">
   <p className="text-xs font-medium text-[#666] uppercase tracking-widest mb-2">For individuals</p>
   <h2 className="text-2xl font-semibold text-white mb-2">Built for people who learn and research</h2>
   <p className="text-sm text-[#999] mb-6">Students, researchers, developers — anyone tired of searching through their own files manually.</p>
 
-  <div className="grid grid-cols-2 gap-4 w-full">
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
     {[
       { icon: Upload, title: 'Upload anything', desc: 'PDF, website, YouTube video, or a photo of handwritten notes' },
       { icon: Mic, title: 'Voice search', desc: 'Ask questions by speaking — no typing needed' },
@@ -143,7 +143,7 @@ export default function Landing() {
 
   
 </section>
-<section className="mx-8 mb-12 bg-[#1c1c1e] border border-[#3a3a3c] rounded-xl p-6 flex items-center justify-between gap-6">
+<section className="mx-0 sm:mx-8 mb-12 bg-[#1c1c1e] border border-[#3a3a3c] rounded-xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
   <div>
     <h3 className="text-base font-semibold text-white mb-1">Need this for your company?</h3>
     <p className="text-sm text-[#999] max-w-md">Run ResearchMind on your own server. Your data never leaves your building. Built for hospitals, law firms, and enterprises with strict data privacy requirements.</p>
@@ -155,7 +155,7 @@ export default function Landing() {
 
   </div> 
 
-<footer className="px-8 py-6 border-t border-[#3a3a3c] flex items-center justify-between">
+<footer className="px-4 sm:px-8 py-6 border-t border-[#3a3a3c] flex flex-wrap items-center justify-between gap-3">
   <div className="flex items-center gap-2">
     <div className="w-5 h-5 bg-[#534AB7] rounded-md flex items-center justify-center">
       <Brain size={12} color="white" />
@@ -163,7 +163,7 @@ export default function Landing() {
     <span className="text-xs text-[#666]">ResearchMind AI</span>
   </div>
 
-  <div className="flex items-center gap-4 text-xs text-[#666]">
+  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-[#666]">
     <span>© 2026 ResearchMind AI</span>
     <a href="#" className="hover:text-white transition-colors">
       Privacy

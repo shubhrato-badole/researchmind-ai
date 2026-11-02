@@ -30,7 +30,7 @@ def _response_text(response) -> str:
 
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-3.5-flash",
+    model="gemini-3.8-flash",
     google_api_key=GEMINI_API_KEY
 )
 

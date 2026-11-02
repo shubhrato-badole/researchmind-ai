@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, CheckCircle, Circle, Clock, Flame, BookOpen, Trophy, Map } from 'lucide-react'
 import Layout from '../Components/Layout'
@@ -10,6 +10,13 @@ import Input from '../Components/ui/input'
 import { useRoadmaps } from '../hooks/useRoadmaps'
 import LimitReachedModal from '../Components/LimitReachedModal'
 
+interface RoadmapSubtopic {
+  id: number
+  title: string
+  description: string
+  is_completed: boolean
+}
+
 interface RoadmapStep {
   step_number: number
   title: string
@@ -18,6 +25,7 @@ interface RoadmapStep {
   estimated_days: number
   quiz_passed: boolean
   resources_ingested: boolean
+  subtopics?: RoadmapSubtopic[]
 }
 
 interface RoadmapProgress {
@@ -43,6 +51,8 @@ export default function Roadmap() {
   const [createError, setCreateError] = useState('')
   const [limitModalOpen, setLimitModalOpen] = useState(false)
   const [limitMessage, setLimitMessage] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [actionMessage, setActionMessage] = useState('')
   const {
     data: progress,
     isLoading: loadingProgress,
@@ -53,6 +63,10 @@ export default function Roadmap() {
     queryKey: ['roadmap-progress', selectedRoadmapId],
     queryFn: async () => {
       const res = await client.get(`/roadmap/${selectedRoadmapId}/progress`)
+      if (res.data?.error) throw new Error(res.data.error)
+      if (!res.data || !Array.isArray(res.data.steps)) {
+        throw new Error('The server returned invalid roadmap progress data.')
+      }
       return res.data as RoadmapProgress
     },
     enabled: !!selectedRoadmapId,
@@ -61,36 +75,85 @@ export default function Roadmap() {
   })
 
   const createMutation = useMutation({
-  mutationFn: (data: any) => client.post('/roadmap/', data),
-  onSuccess: (res) => {
-    if (res.data.error) {
-      setLimitMessage(res.data.error)
-      setLimitModalOpen(true)
-      return
+    mutationFn: (data: any) => client.post('/roadmap/', data),
+    onSuccess: (res) => {
+      if (res.data?.error) {
+        const message = String(res.data.error)
+        if (/used your free roadmap|upgrade to Pro/i.test(message)) {
+          setLimitMessage(message)
+          setLimitModalOpen(true)
+        } else if (/RESOURCE_EXHAUSTED|quota exceeded|current quota/i.test(message)) {
+          setCreateError('Roadmap generation is temporarily unavailable because the Gemini API quota has been reached. Please retry after the quota resets.')
+        } else {
+          setCreateError(message)
+        }
+        return
+      }
+      refetchRoadmaps()
+      setSearchParams({ id: String(res.data.roadmap_id) })
+      setGoal('')
+      setCurrentKnowledge('')
+      setCreateError('')
+    },
+    onError: (err: any) => {
+      const message = err.response?.data?.detail || err.message || 'Failed to generate roadmap. Please try again.'
+      setCreateError(/RESOURCE_EXHAUSTED|quota exceeded|current quota/i.test(String(message))
+        ? 'Roadmap generation is temporarily unavailable because the Gemini API quota has been reached. Please retry after the quota resets.'
+        : String(message))
     }
-    refetchRoadmaps()
-    setSearchParams({ id: String(res.data.roadmap_id) })
-    setGoal('')
-    setCurrentKnowledge('')
-    setCreateError('')
-  },
-  onError: (err: any) => {
-    setCreateError(err.response?.data?.detail || 'Failed to generate roadmap. Please try again.')
-  }
-})
+  })
 
   const startStepMutation = useMutation({
-    mutationFn: (data: any) => client.post('/roadmap/start-step', data),
-    onSuccess: () => {
+    mutationFn: async (data: any) => {
+      const res = await client.post('/roadmap/start-step', data)
+      if (res.data?.error) throw new Error(res.data.error)
+      return res.data
+    },
+    onSuccess: (data) => {
+      setActionError('')
+      setActionMessage(data.message || 'Step started.')
       queryClient.invalidateQueries({ queryKey: ['roadmap-progress', selectedRoadmapId] })
+    },
+    onError: (err: any) => {
+      setActionMessage('')
+      setActionError(err.response?.data?.detail || err.message || 'Could not start this step.')
     }
   })
 
   const completeStepMutation = useMutation({
-    mutationFn: (data: any) => client.post('/roadmap/complete-step', data),
-    onSuccess: () => {
+    mutationFn: async (data: any) => {
+      const res = await client.post('/roadmap/complete-step', data)
+      if (res.data?.error) throw new Error(res.data.error)
+      return res.data
+    },
+    onSuccess: (data) => {
+      setActionError('')
+      setActionMessage(data.message || 'Step completed.')
       queryClient.invalidateQueries({ queryKey: ['roadmap-progress', selectedRoadmapId] })
+      refetchRoadmaps()
+    },
+    onError: (err: any) => {
+      setActionMessage('')
+      setActionError(err.response?.data?.detail || err.message || 'Could not complete this step.')
     }
+  })
+
+  const subtopicMutation = useMutation({
+    mutationFn: async (data: { step_number: number; subtopic_id: number; completed: boolean }) => {
+      const res = await client.patch(
+        `/roadmap/${selectedRoadmapId}/steps/${data.step_number}/subtopics/${data.subtopic_id}`,
+        { completed: data.completed },
+      )
+      if (res.data?.error) throw new Error(res.data.error)
+      return res.data
+    },
+    onSuccess: () => {
+      setActionError('')
+      queryClient.invalidateQueries({ queryKey: ['roadmap-progress', selectedRoadmapId] })
+    },
+    onError: (err: any) => {
+      setActionError(err.response?.data?.detail || err.message || 'Could not save subtopic progress.')
+    },
   })
 
   const handleCreate = () => {
@@ -112,11 +175,23 @@ export default function Roadmap() {
     <Layout>
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        <div className="px-5 py-3 border-b border-[#3a3a3c] bg-[#2d2d2f] flex-shrink-0">
+        <div className="px-3 sm:px-5 py-3 pl-14 md:pl-5 border-b border-[#3a3a3c] bg-[#2d2d2f] flex-shrink-0">
           <h1 className="text-sm font-semibold text-white">Learning roadmap</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 bg-[#2d2d2f]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 bg-[#2d2d2f]">
+          {actionError && (
+            <div role="alert" className="max-w-2xl mx-auto mb-4 rounded-lg border border-red-800 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+              {actionError}
+              <button className="float-right ml-3 text-red-200" onClick={() => setActionError('')} aria-label="Dismiss error">Dismiss</button>
+            </div>
+          )}
+          {actionMessage && (
+            <div role="status" className="max-w-2xl mx-auto mb-4 rounded-lg border border-green-800 bg-green-900/20 px-4 py-3 text-sm text-green-300">
+              {actionMessage}
+              <button className="float-right ml-3 text-green-200" onClick={() => setActionMessage('')} aria-label="Dismiss message">Dismiss</button>
+            </div>
+          )}
 
           {creating && (
             <div className="max-w-xl mx-auto">
@@ -177,7 +252,7 @@ export default function Roadmap() {
                   <div className="w-14 h-14 bg-[#3a1c1c] rounded-2xl flex items-center justify-center text-3xl">⚠️</div>
                   <h2 className="text-sm font-semibold text-white">Couldn't load this roadmap</h2>
                   <p className="text-xs text-[#666] max-w-xs">
-                    {(progressErrorObj as any)?.response?.data?.detail || 'Something went wrong. Please try again.'}
+                    {(progressErrorObj as any)?.response?.data?.detail || (progressErrorObj as any)?.message || 'Something went wrong. Please try again.'}
                   </p>
                   <button
                     onClick={() => refetchProgress()}
@@ -189,7 +264,7 @@ export default function Roadmap() {
               ) : progress && (
                 <div className="flex flex-col gap-5">
 
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
                       { icon: Trophy, label: 'Progress', value: `${progress.progress_percentage}%`, color: 'text-[#7C75D4]' },
                       { icon: CheckCircle, label: 'Completed', value: `${progress.completed_steps}/${progress.total_steps}`, color: 'text-green-400' },
@@ -246,6 +321,41 @@ export default function Roadmap() {
                             </div>
                             <p className="text-xs text-[#666] leading-relaxed mb-3">{step.description}</p>
 
+                            {step.subtopics && step.subtopics.length > 0 ? (
+                              <div className="mb-4 rounded-xl border border-[#303034] bg-[#202022] p-3">
+                                <div className="flex items-center justify-between gap-2 mb-2">
+                                  <p className="text-xs font-semibold text-white">Important subtopics</p>
+                                  <span className="text-[11px] text-[#888]">
+                                    {step.subtopics.filter(item => item.is_completed).length}/{step.subtopics.length} completed
+                                  </span>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  {step.subtopics.map(subtopic => (
+                                    <label key={subtopic.id} className={`flex items-start gap-2 rounded-lg px-2 py-2 ${subtopic.is_completed ? 'bg-green-900/10' : 'bg-[#272729]'} ${step.status === 'upcoming' || step.status === 'completed' ? 'opacity-70' : 'cursor-pointer'}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={subtopic.is_completed}
+                                        disabled={step.status !== 'in_progress' || subtopicMutation.isPending}
+                                        onChange={event => subtopicMutation.mutate({
+                                          step_number: step.step_number,
+                                          subtopic_id: subtopic.id,
+                                          completed: event.target.checked,
+                                        })}
+                                        className="mt-0.5 accent-[#7C75D4]"
+                                      />
+                                      <span className="min-w-0">
+                                        <span className={`block text-xs ${subtopic.is_completed ? 'text-green-300' : 'text-[#ddd]'}`}>{subtopic.title}</span>
+                                        {subtopic.description && <span className="block text-[11px] text-[#777] mt-0.5">{subtopic.description}</span>}
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                                {step.status === 'upcoming' && <p className="text-[11px] text-[#777] mt-2">Start this step to track subtopic completion.</p>}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-[#777] mb-3">This existing step has no saved subtopics. New roadmaps include an essential-subtopic checklist.</p>
+                            )}
+
                             <div className="flex items-center gap-2 flex-wrap">
                               {step.status === 'upcoming' && (
                                 <button
@@ -262,6 +372,16 @@ export default function Roadmap() {
 
                               {step.status === 'in_progress' && (
                                 <>
+                                  {step.subtopics && step.subtopics.length > 0 && !step.subtopics.every(item => item.is_completed) ? (
+                                    <span className="text-xs text-amber-300">Complete all subtopics to unlock the quiz</span>
+                                  ) : (
+                                    <Link
+                                      to={`/study?roadmapId=${selectedRoadmapId}&stepNumber=${step.step_number}`}
+                                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[#534AB7] text-[#b9b3ff] rounded-lg hover:bg-[#1e1b4b] transition-colors"
+                                    >
+                                      <BookOpen size={12} /> Take step quiz
+                                    </Link>
+                                  )}
                                   {step.resources_ingested && (
                                     <span className="text-xs text-green-400 flex items-center gap-1">
                                       <CheckCircle size={11} /> Resources added to knowledge base
@@ -273,11 +393,11 @@ export default function Roadmap() {
                                       step_number: step.step_number,
                                       quiz_passed: step.quiz_passed
                                     })}
-                                    disabled={!step.quiz_passed || completeStepMutation.isPending}
+                                    disabled={!step.quiz_passed || (!!step.subtopics?.length && !step.subtopics.every(item => item.is_completed)) || completeStepMutation.isPending}
                                     className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-green-700 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                   >
                                     <CheckCircle size={12} />
-                                    {step.quiz_passed ? 'Mark complete' : 'Pass quiz first'}
+                                    {!step.quiz_passed ? 'Pass quiz first' : (step.subtopics?.some(item => !item.is_completed) ? 'Complete subtopics first' : 'Mark complete')}
                                   </button>
                                 </>
                               )}
