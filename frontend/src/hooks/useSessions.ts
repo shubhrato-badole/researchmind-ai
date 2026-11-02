@@ -16,7 +16,7 @@ export function useSessions() {
     queryKey: SESSIONS_KEY,
     queryFn: async () => {
       const res = await client.get('/chat/sessions')
-      return res.data.sessions as Session[]
+      return (res.data?.sessions ?? []) as Session[]
     }
   })
 
