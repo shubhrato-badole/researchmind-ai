@@ -68,8 +68,8 @@ export default function Profile() {
 
   return (
     <Layout>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#3a3a3c] bg-[#2d2d2f] flex-shrink-0 flex items-center justify-between">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
+        <div className="px-3 sm:px-5 py-3 pl-14 md:pl-5 border-b border-[#3a3a3c] bg-[#2d2d2f] flex-shrink-0 flex items-center justify-between gap-2">
           <h1 className="text-sm font-semibold text-white">Profile</h1>
           <button
             onClick={() => navigate("/chat")}
@@ -80,7 +80,7 @@ export default function Profile() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-[#2d2d2f]">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 bg-[#2d2d2f]">
           <div className="max-w-lg mx-auto flex flex-col gap-5">
             <div className="flex items-center gap-4 bg-[#1c1c1e] border border-[#2a2a2a] rounded-2xl p-5">
               <div className="w-14 h-14 rounded-full bg-[#534AB7] flex items-center justify-center text-xl font-medium text-white flex-shrink-0">
@@ -98,7 +98,7 @@ export default function Profile() {
               <p className="text-[11px] uppercase tracking-wide text-[#666] mb-2">
                 Usage
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-[#1c1c1e] border border-[#2a2a2a] rounded-xl p-4 text-center">
                   <FileText
                     size={16}
